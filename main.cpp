@@ -18,7 +18,7 @@ void printAST(const std::shared_ptr<ASTNode>& node, int indent = 0);
 // Specialized print functions for clarity or if dynamic_cast is too verbose in a switch
 void printProgramNode(const std::shared_ptr<ProgramNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "ProgramNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     for (const auto& stmt : node->getStatements()) {
         printAST(stmt, indent + 1);
     }
@@ -26,7 +26,7 @@ void printProgramNode(const std::shared_ptr<ProgramNode>& node, int indent) {
 
 void printBlockNode(const std::shared_ptr<BlockNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "BlockNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     for (const auto& stmt : node->getStatements()) {
         printAST(stmt, indent + 1);
     }
@@ -34,13 +34,13 @@ void printBlockNode(const std::shared_ptr<BlockNode>& node, int indent) {
 
 void printExpressionStatementNode(const std::shared_ptr<ExpressionStatementNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "ExpressionStatementNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     printAST(node->getExpression(), indent + 1);
 }
 
 void printIfNode(const std::shared_ptr<IfNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "IfNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     printIndent(indent + 1); std::cout << "Condition:" << std::endl;
     printAST(node->getCondition(), indent + 2);
     printIndent(indent + 1); std::cout << "ThenBranch:" << std::endl;
@@ -53,7 +53,7 @@ void printIfNode(const std::shared_ptr<IfNode>& node, int indent) {
 
 void printWhileNode(const std::shared_ptr<WhileNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "WhileNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     printIndent(indent + 1); std::cout << "Condition:" << std::endl;
     printAST(node->getCondition(), indent + 2);
     printIndent(indent + 1); std::cout << "Body:" << std::endl;
@@ -62,7 +62,7 @@ void printWhileNode(const std::shared_ptr<WhileNode>& node, int indent) {
 
 void printForNode(const std::shared_ptr<ForNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "ForNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     if (node->getInitializer()) {
         printIndent(indent + 1); std::cout << "Initializer:" << std::endl;
         printAST(node->getInitializer(), indent + 2);
@@ -81,7 +81,7 @@ void printForNode(const std::shared_ptr<ForNode>& node, int indent) {
 
 void printReturnNode(const std::shared_ptr<ReturnNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "ReturnNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     if (node->getReturnValue()) {
         printIndent(indent + 1); std::cout << "Value:" << std::endl;
         printAST(node->getReturnValue(), indent + 2);
@@ -90,7 +90,7 @@ void printReturnNode(const std::shared_ptr<ReturnNode>& node, int indent) {
 
 void printVariableDeclarationNode(const std::shared_ptr<VariableDeclarationNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "VariableDeclarationNode (" << node->type_name << "): "
+    std::cout << "(" << node->type_name << "): "
               << node->getDeclaredType() << " " << node->getName() << std::endl;
     if (node->getInitializer()) {
         printIndent(indent + 1); std::cout << "Initializer:" << std::endl;
@@ -100,7 +100,7 @@ void printVariableDeclarationNode(const std::shared_ptr<VariableDeclarationNode>
 
 void printFunctionDeclarationNode(const std::shared_ptr<FunctionDeclarationNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "FunctionDeclarationNode (" << node->type_name << "): "
+    std::cout << "(" << node->type_name << "): "
               << node->getDeclaredType() << " " << node->getName() << "(";
     const auto& paramNames = node->getParamNames();
     const auto& paramTypes = node->getParamTypes();
@@ -118,20 +118,20 @@ void printFunctionDeclarationNode(const std::shared_ptr<FunctionDeclarationNode>
 
 void printAssignmentStatementNode(const std::shared_ptr<AssignmentStatementNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "AssignmentStatementNode (" << node->type_name << ")" << std::endl;
+    std::cout << "(" << node->type_name << ")" << std::endl;
     printAST(node->getAssignment(), indent + 1); // Print the inner AssignmentNode
 }
 
 void printAssignmentNode(const std::shared_ptr<AssignmentNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "AssignmentNode (" << node->type_name << "): " << node->getTargetName() << " =" << std::endl;
+    std::cout << "(" << node->type_name << "): " << node->getTargetName() << " =" << std::endl;
     printIndent(indent + 1); std::cout << "Value:" << std::endl;
     printAST(node->getValue(), indent + 2);
 }
 
 void printBinaryExpressionNode(const std::shared_ptr<BinaryExpressionNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "BinaryExpressionNode (" << node->type_name << "): Operator '" << node->getOperator() << "'" << std::endl;
+    std::cout << "(" << node->type_name << "): Operator '" << node->getOperator() << "'" << std::endl;
     printIndent(indent + 1); std::cout << "Left:" << std::endl;
     printAST(node->getLeft(), indent + 2);
     printIndent(indent + 1); std::cout << "Right:" << std::endl;
@@ -140,19 +140,19 @@ void printBinaryExpressionNode(const std::shared_ptr<BinaryExpressionNode>& node
 
 void printUnaryExpressionNode(const std::shared_ptr<UnaryExpressionNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "UnaryExpressionNode (" << node->type_name << "): Operator '" << node->getOperator() << "'" << std::endl;
+    std::cout << "(" << node->type_name << "): Operator '" << node->getOperator() << "'" << std::endl;
     printIndent(indent + 1); std::cout << "Operand:" << std::endl;
     printAST(node->getOperand(), indent + 2);
 }
 
 void printIdentifierNode(const std::shared_ptr<IdentifierNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "IdentifierNode (" << node->type_name << "): " << node->getName() << std::endl;
+    std::cout << "(" << node->type_name << "): " << node->getName() << std::endl;
 }
 
 void printFunctionCallNode(const std::shared_ptr<FunctionCallNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "FunctionCallNode (" << node->type_name << "): " << node->getFunctionName() << std::endl;
+    std::cout << "(" << node->type_name << "): " << node->getFunctionName() << std::endl;
     const auto& args = node->getArguments();
     if (!args.empty()) {
         printIndent(indent + 1); std::cout << "Arguments:" << std::endl;
@@ -164,22 +164,22 @@ void printFunctionCallNode(const std::shared_ptr<FunctionCallNode>& node, int in
 
 void printStringLiteralNode(const std::shared_ptr<StringLiteralNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "StringLiteralNode (" << node->type_name << "): \"" << node->getValue() << "\"" << std::endl;
+    std::cout << "(" << node->type_name << "): \"" << node->getValue() << "\"" << std::endl;
 }
 
 void printCharLiteralNode(const std::shared_ptr<CharLiteralNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "CharLiteralNode (" << node->type_name << "): '" << node->getValue() << "'" << std::endl;
+    std::cout << "(" << node->type_name << "): '" << node->getValue() << "'" << std::endl;
 }
 
 void printNumberNode(const std::shared_ptr<NumberNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "NumberNode (" << node->type_name << "): " << node->getValue() << std::endl;
+    std::cout << "(" << node->type_name << "): " << node->getValue() << std::endl;
 }
 
 void printBooleanNode(const std::shared_ptr<BooleanNode>& node, int indent) {
     printIndent(indent);
-    std::cout << "BooleanNode (" << node->type_name << "): " << (node->getValue() ? "true" : "false") << std::endl;
+    std::cout << "(" << node->type_name << "): " << (node->getValue() ? "true" : "false") << std::endl;
 }
 
 void printAST(const std::shared_ptr<ASTNode>& node, int indent) {
@@ -251,7 +251,7 @@ int main() {
             for (int i = 0; i < 3; i = i + 1) {
                 y = y - 1;
             }
-            return; // Return with no value (void context)
+            return 0; // Return with no value (void context)
         }
     )";
 

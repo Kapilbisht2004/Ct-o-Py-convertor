@@ -2,26 +2,6 @@
 #include <stdexcept>
 #include <iostream> // For std::cerr
 
-// If Lexer.h doesn't provide tokenTypeToString, add a simple version here or include one.
-// For example:
-/*
-std::string tokenTypeToString(TokenType type) {
-    switch (type) {
-        case TokenType::Identifier: return "Identifier";
-        case TokenType::Operator: return "Operator";
-        case TokenType::Keyword: return "Keyword";
-        case TokenType::Symbol: return "Symbol";
-        case TokenType::StringLiteral: return "StringLiteral";
-        case TokenType::CharLiteral: return "CharLiteral";
-        case TokenType::IntegerNumber: return "IntegerNumber";
-        case TokenType::FloatNumber: return "FloatNumber";
-        case TokenType::EndOfFile: return "EndOfFile";
-        default: return "UnknownTokenType";
-    }
-}
-*/
-
-
 Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens), current(0) {}
 
 // Changed return type to ProgramNode to match declaration
