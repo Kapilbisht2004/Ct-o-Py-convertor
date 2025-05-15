@@ -4,7 +4,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <memory> // For std::shared_ptr
+#include <memory> // For shared_ptr
+using namespace std;
 
 enum class TokenType {
   Keyword,
@@ -22,32 +23,32 @@ enum class TokenType {
   type, // If this is actually needed; might be for type keywords specifically
   BooleanLiteral // Added for boolean literals (true/false)
 };
-std::string tokenTypeToString(TokenType type); // Defined in Lexer.cpp
+string tokenTypeToString(TokenType type); // Defined in Lexer.cpp
 struct Token {
   TokenType type;
-  std::string value;
+  string value;
   int line = 1; // Default values
   int col = 1;  // Default values
   // Default constructor
   Token() : type(TokenType::Unknown), value(""), line(1), col(1) {}
   // Add this constructor
-  Token(TokenType type, const std::string& value, int line = 1, int col = 1)
+  Token(TokenType type, const string& value, int line = 1, int col = 1)
       : type(type), value(value), line(line), col(col) {}
 
   // Add this method
-  std::string toString() const {
+  string toString() const {
       return tokenTypeToString(type) + ": " + value;
   }
 };
 
 class Lexer {
 public:
-  explicit Lexer(const std::string &src);
-  std::vector<Token> tokenize();
+  explicit Lexer(const string &src);
+  vector<Token> tokenize();
   Token nextToken();
 
 private:
-  std::string source;
+  string source;
   size_t pos = 0;
   int line = 1;
   int col = 1;

@@ -4,7 +4,7 @@
 #include <memory> // For std::shared_ptr, std::dynamic_pointer_cast
 #include "Lexer.h"  // Assumed to provide Token, TokenType, tokenTypeToString, and Lexer class
 #include "Parser.h" // Provides ASTNode derived classes and Parser class
-
+#include "Transpiler.h"
 // Helper to print indentation
 void printIndent(int indent) {
     for (int i = 0; i < indent; ++i) {
@@ -277,6 +277,11 @@ int main() {
     } else {
         std::cout << "Parsing failed to produce an AST root." << std::endl;
     }
+
+    std::cout << "\n=== Python Code ===\n";
+    Transpiler transpiler(ast_root);
+    std::string python_code = transpiler.transpile();
+    std::cout << python_code;
 
     return 0;
 }
