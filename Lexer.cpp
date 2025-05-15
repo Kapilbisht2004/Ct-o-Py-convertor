@@ -1,9 +1,10 @@
 #include "Lexer.h"
 #include <cctype>
-#include <string> // Ensure std::string is fully available
-#include <vector> // Ensure std::vector is fully available
+#include <string> // Ensure string is fully available
+#include <vector> // Ensure vector is fully available
+using namespace std;
 
-Lexer::Lexer(const std::string &src) : source(src), pos(0) {}
+Lexer::Lexer(const string &src) : source(src), pos(0) {}
 
 char Lexer::peek() {
     return pos < source.size() ? source[pos] : '\0';
@@ -74,7 +75,7 @@ Token Lexer::lexStringLiteral() {
     int start_col = col;
     
     get(); // Consume opening "
-    std::string value;
+    string value;
     while (peek() != '"' && peek() != '\0') {
         if (peek() == '\\') { // Handle escape sequence
             get(); // Consume '\'
@@ -96,7 +97,7 @@ Token Lexer::lexStringLiteral() {
                 default:
                     // Unknown escape sequence, could be an error or pass char through
                     value += escaped_char; // Simple: pass through
-                    // Or: return {TokenType::Error, "Unknown escape sequence \\" + std::string(1, escaped_char) + " in string"};
+                    // Or: return {TokenType::Error, "Unknown escape sequence \\" + string(1, escaped_char) + " in string"};
                     break;
             }
         } else {
@@ -116,7 +117,7 @@ Token Lexer::lexCharacterLiteral() {
     int start_col = col;
     
     get(); // Consume opening '
-    std::string value;
+    string value;
     if (peek() == '\'') return {TokenType::Error, "Empty character literal", start_line, start_col};
     if (peek() == '\0') return {TokenType::Error, "Unterminated character literal (EOF after ')", start_line, start_col};
 
@@ -152,7 +153,7 @@ Token Lexer::lexNumber() {
     int start_line = line;
     int start_col = col;
     
-    std::string num_str;
+    string num_str;
     bool is_float = false;
     char initial_char = peek();
 
@@ -238,12 +239,12 @@ Token Lexer::lexPreprocessorDirective() {
   
   // Assumes '#' has been peeked and we decided this is a directive
   get(); // Consume '#'
-  std::string directive_name;
+  string directive_name;
   while (isalpha(peek())) {
       directive_name += get();
   }
 
-  std::string rest_of_line;
+  string rest_of_line;
   // Skip any immediate whitespace after the directive name BEFORE capturing arguments
   while (peek() == ' ' || peek() == '\t') { // Only space/tab, not newline
       get();
@@ -263,10 +264,10 @@ Token Lexer::lexPreprocessorDirective() {
   // The newline that terminates the directive is not part of its content.
   // skipSingleLineComment or nextToken's main loop will consume it.
 
-  std::string token_value = directive_name;
+  string token_value = directive_name;
   // Trim trailing whitespace from rest_of_line if any was captured before line end
   size_t end = rest_of_line.find_last_not_of(" \t");
-  if (std::string::npos != end) {
+  if (string::npos != end) {
       rest_of_line = rest_of_line.substr(0, end + 1);
   }
 
@@ -285,7 +286,7 @@ Token Lexer::tryLexOperator() {
     char c2 = peek_next();
 
     // Two-character operators (try to match longest first)
-    std::string op_str;
+    string op_str;
     op_str += c1;
     if (c2 != '\0') op_str += c2; // Tentatively form two-char string
 
@@ -333,7 +334,7 @@ Token Lexer::tryLexOperator() {
         case '&': case '|': case '^': case '~': case '.':
         case '?': case ':': // Added ternary operators
             get(); // Consume the single character
-            return {TokenType::Operator, std::string(1, c1), start_line, start_col};
+            return {TokenType::Operator, string(1, c1), start_line, start_col};
         default:
             return {TokenType::Unknown, "", start_line, start_col}; // Not an operator we recognize
     }
@@ -388,13 +389,13 @@ Token Lexer::nextToken() {
 
     // 5. Identifiers and Keywords
     if (isalpha(c) || c == '_') {
-        std::string value;
+        string value;
         while (isalnum(peek()) || peek() == '_') {
             value += get();
         }
         
         // Check for keywords
-        static const std::unordered_map<std::string, bool> keywords = {
+        static const unordered_map<string, bool> keywords = {
             {"auto", true}, {"break", true}, {"case", true}, {"char", true}, 
             {"const", true}, {"continue", true}, {"default", true}, {"do", true}, 
             {"double", true}, {"else", true}, {"enum", true}, {"extern", true}, 
@@ -442,16 +443,16 @@ Token Lexer::nextToken() {
         case ';': case ',':
         case '(': case ')': case '{': case '}': case '[': case ']':
             get(); // Consume the symbol
-            return {TokenType::Symbol, std::string(1, c), start_line, start_col};
+            return {TokenType::Symbol, string(1, c), start_line, start_col};
     }
 
     // 9. Unrecognized character
     get(); // Consume the character
-    return {TokenType::Error, "Unrecognized character: " + std::string(1, c), start_line, start_col};
+    return {TokenType::Error, "Unrecognized character: " + string(1, c), start_line, start_col};
 }
 
-std::vector<Token> Lexer::tokenize() {
-    std::vector<Token> tokens;
+vector<Token> Lexer::tokenize() {
+    vector<Token> tokens;
     Token token;
     do {
         token = nextToken();
@@ -459,13 +460,13 @@ std::vector<Token> Lexer::tokenize() {
         if (token.type == TokenType::Error) {
             // Optional: Stop tokenizing on first error, or collect all errors.
             // For now, we continue, but a parser might stop.
-            // std::cerr << "Lexical Error: " << token.value << " at line " << token.line << ", col " << token.col << std::endl;
+            // cerr << "Lexical Error: " << token.value << " at line " << token.line << ", col " << token.col << endl;
         }
     } while (token.type != TokenType::EndOfFile);
     return tokens;
 }
 
-std::string tokenTypeToString(TokenType type) {
+string tokenTypeToString(TokenType type) {
     switch (type) {
         case TokenType::Keyword: return "Keyword";
         case TokenType::Identifier: return "Identifier";
