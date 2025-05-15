@@ -212,9 +212,6 @@ std::string Transpiler::transpileFunctionDeclaration(std::shared_ptr<FunctionDec
 // Transpile Expression
 std::string Transpiler::transpileExpression(std::shared_ptr<ExpressionNode> expr) {
     if (!expr) return "";
-
-    std::cerr << "Transpiling expression node type: " << expr->type_name << std::endl;
-
     if (auto binary = std::dynamic_pointer_cast<BinaryExpressionNode>(expr)) {
         return transpileBinaryExpression(binary);
     }
