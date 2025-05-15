@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream> 
 #include <memory> // For shared_ptr, dynamic_pointer_cast
 #include "Lexer.h"  // Assumed to provide Token, TokenType, tokenTypeToString, and Lexer class
 #include "Parser.h" // Provides ASTNode derived classes and Parser class
@@ -284,6 +285,16 @@ int main() {
     Transpiler transpiler(ast_root);
     string python_code = transpiler.transpile();
     cout << python_code;
+
+    // Write to converted.py
+    std::ofstream outFile("Converted.py");
+    if (outFile) {
+        outFile << python_code;
+        outFile.close();
+        std::cout << "\nPython code written to Converted.py\n";
+    } else {
+        std::cerr << "Failed to open converted.py for writing.\n";
+    }
 
     return 0;
 }
