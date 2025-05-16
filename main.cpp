@@ -252,7 +252,7 @@ int main() {
             while (x < 15) {
                 x = x + 1;
             }
-            for (int i = 0; i < 3; i = i + 1) {
+            for (int i = 0; i < 3; i = i +2) {
                 y = y - 1;
             }
             return 0; // Return with no value (void context)

@@ -101,13 +101,17 @@ std::string Transpiler::transpileAssignmentNode(std::shared_ptr<AssignmentNode> 
 // Transpile Variable Declaration (no type, no semicolon)
 std::string Transpiler::transpileVariableDeclaration(std::shared_ptr<VariableDeclarationNode> decl) {
     std::string name = decl->getName();
-    std::string init = decl->getInitializer() ? transpileExpression(decl->getInitializer()) : "";
-    if (init.empty()) {
-        return name + "\n";
-    } else {
+    if (decl->getInitializer()) {
+        std::string init = transpileExpression(decl->getInitializer());
         return name + " = " + init + "\n";
+    } else {
+        // Option 1: skip completely
+        return "";
+        // Option 2 (optional): assign None
+        // return name + " = None\n";
     }
 }
+
 
 // Transpile If Statement
 std::string Transpiler::transpileIfStatement(std::shared_ptr<IfNode> stmt) {
@@ -152,16 +156,15 @@ std::string Transpiler::transpileWhileStatement(std::shared_ptr<WhileNode> stmt)
 // Transpile For Statement (convert to Python style for-in-range)
 std::string Transpiler::transpileForStatement(std::shared_ptr<ForNode> stmt) {
     std::string loopVar;
-    std::string startVal;
+    std::string startVal = "0";
     std::string endVal;
+    std::string stepVal = "1"; // Default step is 1
 
-    // Extract loop variable and start value from initializer
+    // 1. Extract initializer (for loop variable and start)
     if (auto decl = std::dynamic_pointer_cast<VariableDeclarationNode>(stmt->getInitializer())) {
         loopVar = decl->getName();
         if (decl->getInitializer()) {
             startVal = transpileExpression(decl->getInitializer());
-        } else {
-            startVal = "0";
         }
     } else if (auto assignStmt = std::dynamic_pointer_cast<AssignmentStatementNode>(stmt->getInitializer())) {
         loopVar = assignStmt->getAssignment()->getTargetName();
@@ -170,13 +173,44 @@ std::string Transpiler::transpileForStatement(std::shared_ptr<ForNode> stmt) {
         throw std::runtime_error("Unsupported for-loop initializer type.");
     }
 
-    // Extract end value from condition (assumed form: i < endVal)
+    // 2. Extract condition (assume form: i < endVal or i <= endVal)
     if (auto binaryCond = std::dynamic_pointer_cast<BinaryExpressionNode>(stmt->getCondition())) {
+        std::string op = binaryCond->getOperator();
         endVal = transpileExpression(binaryCond->getRight());
+
+        if (op == "<=") {
+            endVal += " + 1"; // Inclusive
+        } else if (op != "<") {
+            throw std::runtime_error("Unsupported for-loop condition operator: " + op);
+        }
     } else {
         throw std::runtime_error("Unsupported for-loop condition type.");
     }
 
+    // 3. Detect if increment is additive/subtractive or complex
+    bool isSimpleIncrement = false;
+    std::string incrementCode;
+
+    if (auto incrAssign = std::dynamic_pointer_cast<AssignmentNode>(stmt->getIncrement())) {
+        auto binaryExpr = std::dynamic_pointer_cast<BinaryExpressionNode>(incrAssign->getValue());
+        if (binaryExpr && 
+           (binaryExpr->getOperator() == "+" || binaryExpr->getOperator() == "-") &&
+            transpileExpression(binaryExpr->getLeft()) == loopVar) {
+            isSimpleIncrement = true;
+            if (binaryExpr->getOperator() == "+") {
+                stepVal = transpileExpression(binaryExpr->getRight());
+            } else { // operator == "-"
+                stepVal = "-" + transpileExpression(binaryExpr->getRight());
+            }
+        } else {
+            // Complex increment detected (e.g., multiplication)
+            incrementCode = transpileAssignmentNode(incrAssign) + "\n";
+        }
+    } else {
+        throw std::runtime_error("Unsupported for-loop increment type.");
+    }
+
+    // 4. Transpile body
     std::string body;
     if (auto bodyBlock = std::dynamic_pointer_cast<BlockNode>(stmt->getBody())) {
         body = transpileBlock(bodyBlock);
@@ -184,8 +218,21 @@ std::string Transpiler::transpileForStatement(std::shared_ptr<ForNode> stmt) {
         body = indent(transpileStatement(stmt->getBody()));
     }
 
-    return "for " + loopVar + " in range(" + startVal + ", " + endVal + "):\n" + body;
+    // 5. Construct Python code
+    if (isSimpleIncrement) {
+        // Use for-in-range loop
+        return "for " + loopVar + " in range(" + startVal + ", " + endVal + ", " + stepVal + "):\n" + body;
+    } else {
+        // Use while loop for complex increments
+        std::string code;
+        code += loopVar + " = " + startVal + "\n";
+        code += "while " + transpileExpression(stmt->getCondition()) + ":\n";
+        code += body;
+        code += indent(incrementCode, 1);
+        return code;
+    }
 }
+
 
 // Transpile Function Declaration (remove types, add colon + indent body)
 std::string Transpiler::transpileFunctionDeclaration(std::shared_ptr<FunctionDeclarationNode> funcDecl) {
