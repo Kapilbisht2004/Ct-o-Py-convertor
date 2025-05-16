@@ -6,7 +6,6 @@
 #include "Lexer.h"  // Assumed to provide Token, TokenType, tokenTypeToString, and Lexer class
 #include "Parser.h" // Provides ASTNode derived classes and Parser class
 #include "transpiler.h"
-#include "Transpiler.h"
 using namespace std;
 
 // Helper to print indentation
@@ -316,35 +315,29 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
 }
 
 int main() {
-    // === Step 1: Read code from input file ===
-    ifstream inputFile("./input_code.c");
-    if (!inputFile.is_open()) {
-        cerr << "Error: Could not open input_code.txt for reading." << endl;
-        return 1;
+    // === Step 1: Read code from stdin ===
+    string line, source_code;
+    while (getline(cin, line)) {
+        source_code += line + "\n";
     }
-
-    string source_code((istreambuf_iterator<char>(inputFile)), istreambuf_iterator<char>());
-    inputFile.close();
 
     // === Step 2: Lexical Analysis ===
     Lexer lexer(source_code);
     vector<Token> tokens = lexer.tokenize();
 
-    cout << "=== Tokens ===\n";
+    cout << "---TOKENS---\n";
     for (const auto& token : tokens) {
-        cout << "Token: '" << token.value << "'"
-             << "\tType: " << tokenTypeToString(token.type)
-             << "\t(Line: " << token.line << ", Col: " << token.col << ")\n";
+        cout <<" "<< token.value << "       ---->(" << tokenTypeToString(token.type) << ")          "
+             << " line : " << token.line << " , col : " << token.col <<endl;
     }
-    cout << endl;
 
     // === Step 3: Parse tokens into AST ===
     Parser parser(tokens);
     shared_ptr<ProgramNode> ast_root = parser.parse();
 
-    cout << "=== AST ===\n";
+    cout << "---AST---\n";
     if (ast_root) {
-        printAST(ast_root);
+        printAST(ast_root); // your AST pretty printer
     } else {
         cerr << "Parsing failed to produce an AST root." << endl;
         return 1;
@@ -354,18 +347,8 @@ int main() {
     Transpiler transpiler;
     string python_code = transpiler.transpile(ast_root);
 
-    cout << "=== Transpiled Python Code ===\n" << python_code << endl;
+    cout << "---PYTHON_CODE---\n";
+    cout << python_code << endl;
 
-    // === Step 5: Save transpiled code to output file ===
-    ofstream outputFile("Converted.py");
-    if (!outputFile.is_open()) {
-        cerr << "Error: Could not open converted.py for writing." << endl;
-        return 1;
-    }
-
-    outputFile << python_code;
-    outputFile.close();
-
-    cout << "Python code saved to 'Converted.py'" << endl;
     return 0;
 }
