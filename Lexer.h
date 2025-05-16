@@ -64,7 +64,7 @@ private:
 
   Token lexStringLiteral();
   Token lexCharacterLiteral();
-  Token lexPreprocessorDirective();
+  void skipPreprocessorDirective();
   Token lexNumber();
   Token tryLexOperator();
 };

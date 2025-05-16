@@ -233,49 +233,33 @@ Token Lexer::lexNumber() {
                       Token{TokenType::IntegerNumber, num_str, start_line, start_col};
 }
 
-Token Lexer::lexPreprocessorDirective() {
-  int start_line = line;
-  int start_col = col;
-  
-  // Assumes '#' has been peeked and we decided this is a directive
-  get(); // Consume '#'
-  string directive_name;
-  while (isalpha(peek())) {
-      directive_name += get();
-  }
+// Add this new method to your Lexer class implementation
+void Lexer::skipPreprocessorDirective() {
+    // Assumes '#' has been identified by peek() and this method is called.
+    get(); // Consume the '#' character
 
-  string rest_of_line;
-  // Skip any immediate whitespace after the directive name BEFORE capturing arguments
-  while (peek() == ' ' || peek() == '\t') { // Only space/tab, not newline
-      get();
-  }
-  
-  while (peek() != '\n' && peek() != '\0') {
-      if (peek() == '\\' && peek_next() == '\n') {
-          get(); // consume '\'
-          get(); // consume '\n'
-          // Line continuation: Optionally add a space or handle specific preprocessor rules.
-          // For simplicity here, we just join them directly.
-          // A real preprocessor might replace the sequence with nothing or a space.
-          continue;
-      }
-      rest_of_line += get();
-  }
-  // The newline that terminates the directive is not part of its content.
-  // skipSingleLineComment or nextToken's main loop will consume it.
+    // Preprocessor directives extend to the logical end of the line.
+    // This means we need to handle backslash-newline for line continuation.
+    while (true) {
+        char currentChar = peek();
 
-  string token_value = directive_name;
-  // Trim trailing whitespace from rest_of_line if any was captured before line end
-  size_t end = rest_of_line.find_last_not_of(" \t");
-  if (string::npos != end) {
-      rest_of_line = rest_of_line.substr(0, end + 1);
-  }
-
-  if (!rest_of_line.empty()) {
-      token_value += " " + rest_of_line;
-  }
-  
-  return {TokenType::PreprocessorDirective, token_value, start_line, start_col};
+        if (currentChar == '\0') {
+            // End of file reached before the end of the directive.
+            break;
+        } else if (currentChar == '\\' && peek_next() == '\n') {
+            // Line continuation
+            get(); // Consume '\'
+            get(); // Consume '\n'
+            // Continue reading on the next physical line as part of the same logical directive line
+        } else if (currentChar == '\n') {
+            // End of the preprocessor directive line
+            get(); // Consume the newline character
+            break;
+        } else {
+            // Consume any other character on the preprocessor line
+            get();
+        }
+    }
 }
 
 Token Lexer::tryLexOperator() {
@@ -350,9 +334,8 @@ Token Lexer::nextToken() {
         // Check 1: Preprocessor Directive?
         // In C, '#' must be the first non-whitespace char on a logical line.
         if (c == '#') {
-            // Assuming current_pos implies "start of logical line" after skipWhitespace.
-            // A full preprocessor might need more context (e.g., column number).
-            return lexPreprocessorDirective();
+            skipPreprocessorDirective(); // Skip the entire directive
+            continue; // Restart loop to find next token or more skippable items
         }
         
         char n = peek_next();
