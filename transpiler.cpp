@@ -187,6 +187,7 @@ std::string Transpiler::transpileForStatement(std::shared_ptr<ForNode> stmt) {
     return "for " + loopVar + " in range(" + startVal + ", " + endVal + "):\n" + body;
 }
 
+
 // Transpile Function Declaration (remove types, add colon + indent body)
 std::string Transpiler::transpileFunctionDeclaration(std::shared_ptr<FunctionDeclarationNode> funcDecl) {
     std::string code = "def " + funcDecl->getName() + "(";
