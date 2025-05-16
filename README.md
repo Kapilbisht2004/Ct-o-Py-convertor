@@ -5,3 +5,4 @@ then run the executeable file ------>    ./transpiler.exe
 curently you will see list to tokens 
 and after that you will see Abstract syntax tree
 and now the python code generated will also be shown in terminal.
+Now to test the functioning of project make changes to input_code.c file.
