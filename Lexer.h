@@ -1,10 +1,8 @@
-#ifndef LEXER_H
-#define LEXER_H
+#pragma once
 
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <memory> // For shared_ptr
 using namespace std;
 
 enum class TokenType {
@@ -20,7 +18,6 @@ enum class TokenType {
   EndOfFile,
   Error,
   Unknown,
-  type, // If this is actually needed; might be for type keywords specifically
   BooleanLiteral // Added for boolean literals (true/false)
 };
 string tokenTypeToString(TokenType type); // Defined in Lexer.cpp
@@ -68,5 +65,3 @@ private:
   Token lexNumber();
   Token tryLexOperator();
 };
-
-#endif

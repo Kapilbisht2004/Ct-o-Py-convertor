@@ -322,13 +322,7 @@ shared_ptr<ExpressionNode> Parser::parseCall() {
                 // e.g. (1+2)() is not a valid call
                 throw runtime_error("Expression before '(' is not a callable identifier.");
             }
-        } /* else if (match(TokenType::Symbol, "[")) { // Array access
-            // ... handle array access ...
-            // expr = ... make ArrayAccessNode ...
-        } else if (match(TokenType::Symbol, ".")) { // Member access
-            // ... handle member access ...
-            // expr = ... make MemberAccessNode ...
-        } */
+        }
         else {
             break; // No more call-like operators
         }

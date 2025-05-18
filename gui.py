@@ -183,7 +183,7 @@ class Transpiler(QWidget):
             self,
             "Open C File",
             "",
-            "C Files (*.c *.h);;All Files (*)",
+            "C Files (*.c);;All Files (*.c)",
             options=options
         )
         if file_path:

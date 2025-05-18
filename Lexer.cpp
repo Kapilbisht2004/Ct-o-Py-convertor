@@ -1,7 +1,5 @@
 #include "Lexer.h"
 #include <cctype>
-#include <string> // Ensure string is fully available
-#include <vector> // Ensure vector is fully available
 using namespace std;
 
 Lexer::Lexer(const string &src) : source(src), pos(0) {}
@@ -93,14 +91,14 @@ Token Lexer::lexStringLiteral() {
                 case 'r': value += '\r'; break;
                 case 'b': value += '\b'; break;
                 case 'f': value += '\f'; break;
-                // Add other escapes like \0, \xHH, \uHHHH if needed
                 default:
                     // Unknown escape sequence, could be an error or pass char through
                     value += escaped_char; // Simple: pass through
                     // Or: return {TokenType::Error, "Unknown escape sequence \\" + string(1, escaped_char) + " in string"};
                     break;
             }
-        } else {
+        } 
+        else {
             value += get();
         }
     }
@@ -140,7 +138,7 @@ Token Lexer::lexCharacterLiteral() {
 
     if (peek() == '\'') {
         get(); // Consume closing '
-        // C-style char literals typically represent one byte/char. Some allow more for 'int' constants.
+        // C-style char literals typically represent one char.
         // For simplicity, we allow what was parsed. A parser might enforce length 1.
         if (value.length() == 0) return {TokenType::Error, "Internal error: Empty char literal value.", start_line, start_col}; // Should not happen
         return {TokenType::CharLiteral, value, start_line, start_col};
@@ -165,7 +163,8 @@ Token Lexer::lexNumber() {
         while (isdigit(peek())) {
             num_str += get();
         }
-    } else { // Starts with a digit
+    } 
+    else { // Starts with a digit
         while (isdigit(peek())) {
             num_str += get();
         }
@@ -462,7 +461,6 @@ string tokenTypeToString(TokenType type) {
         case TokenType::Symbol: return "Symbol";
         case TokenType::EndOfFile: return "EndOfFile";
         case TokenType::Error: return "Error";
-        case TokenType::type: return "Type"; // Added support for the 'type' token type
         case TokenType::BooleanLiteral: return "BooleanLiteral"; // Added support for boolean literals
         default: return "Unknown";
     }
