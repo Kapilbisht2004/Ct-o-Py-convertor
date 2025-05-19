@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "memory": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "unordered_map": "cpp",
+        "xstring": "cpp"
     }
 }

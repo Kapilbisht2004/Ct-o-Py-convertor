@@ -2,7 +2,7 @@
 #include <cctype>
 using namespace std;
 
-Lexer::Lexer(const string &src) : source(src), pos(0) {}
+Lexer::Lexer(const string &src) : source(src), pos(0), line(1), col(1) {}
 
 char Lexer::peek() {
     return pos < source.size() ? source[pos] : '\0';
@@ -116,7 +116,10 @@ Token Lexer::lexCharacterLiteral() {
     
     get(); // Consume opening '
     string value;
-    if (peek() == '\'') return {TokenType::Error, "Empty character literal", start_line, start_col};
+    if (peek() == '\'') {
+        get(); // Consume closing '
+        return {TokenType::Error, "Empty character literal", start_line, start_col};
+    }
     if (peek() == '\0') return {TokenType::Error, "Unterminated character literal (EOF after ')", start_line, start_col};
 
     if (peek() == '\\') { // Handle escape sequence
@@ -129,6 +132,9 @@ Token Lexer::lexCharacterLiteral() {
             case 't': value += '\t'; break;
             case '\'': value += '\''; break;
             case '\\': value += '\\'; break;
+            case 'r': value += '\r'; break;
+            case 'b': value += '\b'; break;
+            case 'f': value += '\f'; break;
             // Add more as needed
             default: value += escaped_char; break; // Or error for unknown
         }
@@ -138,12 +144,21 @@ Token Lexer::lexCharacterLiteral() {
 
     if (peek() == '\'') {
         get(); // Consume closing '
-        // C-style char literals typically represent one char.
-        // For simplicity, we allow what was parsed. A parser might enforce length 1.
-        if (value.length() == 0) return {TokenType::Error, "Internal error: Empty char literal value.", start_line, start_col}; // Should not happen
         return {TokenType::CharLiteral, value, start_line, start_col};
     } else {
-        return {TokenType::Error, "Unterminated character literal: '" + value, start_line, start_col};
+        // Scan ahead to find the closing quote if possible
+        string rest = "";
+        while (peek() != '\'' && peek() != '\0' && peek() != '\n') {
+            rest += get();
+        }
+        if (peek() == '\'') {
+            get(); // Consume closing '
+            // In C, character literals with more than one character are allowed
+            // but might be implementation-defined. For the lexer, we'll accept it.
+            value += rest;
+            return {TokenType::CharLiteral, value, start_line, start_col};
+        }
+        return {TokenType::Error, "Unterminated character literal: '" + value + rest, start_line, start_col};
     }
 }
 
@@ -232,7 +247,6 @@ Token Lexer::lexNumber() {
                       Token{TokenType::IntegerNumber, num_str, start_line, start_col};
 }
 
-// Add this new method to your Lexer class implementation
 void Lexer::skipPreprocessorDirective() {
     // Assumes '#' has been identified by peek() and this method is called.
     get(); // Consume the '#' character
@@ -364,7 +378,7 @@ Token Lexer::nextToken() {
         return lexStringLiteral();
     }
 
-    // 4. Character Literals
+    // 4. Character Literals - IMPORTANT: Check for this before operators and symbols
     if (c == '\'') {
         return lexCharacterLiteral();
     }

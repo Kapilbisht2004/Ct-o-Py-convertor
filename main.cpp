@@ -1,6 +1,12 @@
 #include <iostream>
 #include <fstream>
-#include "transpiler.h"
+#include <vector>    // For std::vector
+#include <string>    // For std::string
+#include <memory>    // For std::shared_ptr
+#include "transpiler.h" // Contains Lexer, Parser, AST nodes, and Transpiler
+// Ensure Lexer.h, Parser.h and their .cpp are correctly set up
+// and "transpiler.h" correctly includes them or provides their definitions.
+
 using namespace std;
 
 // Helper to print indentation
@@ -39,6 +45,38 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         cout << "(" << p->type_name << ")" << endl;
         printAST(p->getExpression(), indent + 1);
     }
+    else if (auto p = dynamic_pointer_cast<PrintNode>(node)) { 
+        printIndent(indent);
+        cout << "(" << p->type_name << ")" << endl;
+        printIndent(indent + 1); cout << "Expression:" << endl;
+        printAST(p->getExpression(), indent + 2);
+    }
+    else if (auto p = dynamic_pointer_cast<PrintfNode>(node)) { 
+        printIndent(indent);
+        cout << "(" << p->type_name << ")" << endl;
+        printIndent(indent + 1); cout << "FormatString:" << endl;
+        printAST(p->getFormatStringExpression(), indent + 2);
+        const auto &args = p->getArguments();
+        if (!args.empty()) {
+            printIndent(indent + 1); cout << "Arguments:" << endl;
+            for (const auto &arg : args) {
+                printAST(arg, indent + 2);
+            }
+        }
+    }
+    else if (auto p = dynamic_pointer_cast<ScanfNode>(node)) { 
+        printIndent(indent);
+        cout << "(" << p->type_name << ")" << endl;
+        printIndent(indent + 1); cout << "FormatString:" << endl;
+        printAST(p->getFormatStringExpression(), indent + 2);
+        const auto &args = p->getArguments();
+        if (!args.empty()) {
+            printIndent(indent + 1); cout << "Arguments:" << endl;
+            for (const auto &arg : args) {
+                printAST(arg, indent + 2);
+            }
+        }
+    }
     else if (auto p = dynamic_pointer_cast<IfNode>(node)) {
         printIndent(indent);
         cout << "(" << p->type_name << ")" << endl;
@@ -65,14 +103,20 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         if (p->getInitializer()) {
             printIndent(indent + 1); cout << "Initializer:" << endl;
             printAST(p->getInitializer(), indent + 2);
+        } else {
+            printIndent(indent + 1); cout << "Initializer: (empty)" << endl;
         }
         if (p->getCondition()) {
             printIndent(indent + 1); cout << "Condition:" << endl;
             printAST(p->getCondition(), indent + 2);
+        } else {
+            printIndent(indent + 1); cout << "Condition: (empty)" << endl;
         }
         if (p->getIncrement()) {
             printIndent(indent + 1); cout << "Increment:" << endl;
             printAST(p->getIncrement(), indent + 2);
+        } else {
+            printIndent(indent + 1); cout << "Increment: (empty)" << endl;
         }
         printIndent(indent + 1); cout << "Body:" << endl;
         printAST(p->getBody(), indent + 2);
@@ -83,6 +127,8 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         if (p->getReturnValue()) {
             printIndent(indent + 1); cout << "Value:" << endl;
             printAST(p->getReturnValue(), indent + 2);
+        } else {
+            printIndent(indent + 1); cout << "Value: (void)" << endl;
         }
     }
     else if (auto p = dynamic_pointer_cast<BreakNode>(node)) {
@@ -104,8 +150,8 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
     else if (auto p = dynamic_pointer_cast<FunctionDeclarationNode>(node)) {
         printIndent(indent);
         cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << "(";
-        const auto &paramNames = p->getParamNames();
-        const auto &paramTypes = p->getParamTypes();
+        const auto paramNames = p->getParamNames();
+        const auto paramTypes = p->getParamTypes();
         for (size_t i = 0; i < paramNames.size(); ++i) {
             cout << paramTypes[i] << " " << paramNames[i] << (i < paramNames.size() - 1 ? ", " : "");
         }
@@ -122,9 +168,9 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         cout << "(" << p->type_name << ")" << endl;
         printAST(p->getAssignment(), indent + 1);
     }
-    else if (auto p = dynamic_pointer_cast<AssignmentNode>(node)) {
+    else if (auto p = dynamic_pointer_cast<AssignmentNode>(node)) { 
         printIndent(indent);
-        cout << "(" << p->type_name << "): " << p->getTargetName() << " =" << endl;
+        cout << "(" << p->type_name << "): Target '" << p->getTargetName() << "' =" << endl;
         printIndent(indent + 1); cout << "Value:" << endl;
         printAST(p->getValue(), indent + 2);
     }
@@ -155,6 +201,8 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
             for (const auto &arg : args) {
                 printAST(arg, indent + 2);
             }
+        } else {
+            printIndent(indent + 1); cout << "Arguments: (none)" << endl;
         }
     }
     else if (auto p = dynamic_pointer_cast<StringLiteralNode>(node)) {
@@ -173,14 +221,37 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         printIndent(indent);
         cout << "(" << p->type_name << "): " << (p->getValue() ? "true" : "false") << endl;
     }
-    else {
+    else { // Fallback for unknown node types or types not explicitly handled above
         printIndent(indent);
-        cout << "Unknown or unhandled ASTNode type: " << (node->type_name.empty() ? "(no type_name)" : node->type_name) << endl;
-        // Generic child printing for unhandled complex nodes
-        if (!node->getChildren().empty()) {
-            printIndent(indent + 1); cout << "Generic Children:" << endl;
-            for (const auto &child : node->getChildren()) {
-                printAST(child, indent + 2);
+        cout << "Unknown or unhandled ASTNode type: " << (node->type_name.empty() ? "(no type_name field set)" : node->type_name) << endl;
+        
+        const auto& genericChildren = node->getChildren();
+        if (!genericChildren.empty()) {
+            // The following booleans are used to avoid printing generic children
+            // if they are already explicitly printed by specific handlers above.
+            // This logic is to satisfy IntelliSense about converting shared_ptr to bool.
+            bool isPrintfOrScanf = (dynamic_pointer_cast<PrintfNode>(node) != nullptr) || 
+                                   (dynamic_pointer_cast<ScanfNode>(node) != nullptr);
+            bool isExpressionStmt = (dynamic_pointer_cast<ExpressionStatementNode>(node) != nullptr); // Line 243
+            bool isProgramOrBlock = (dynamic_pointer_cast<ProgramNode>(node) != nullptr) || 
+                                    (dynamic_pointer_cast<BlockNode>(node) != nullptr);
+            bool isReturnNode = (dynamic_pointer_cast<ReturnNode>(node) != nullptr);                 // Line 245
+            bool isVarDecl = (dynamic_pointer_cast<VariableDeclarationNode>(node) != nullptr);       // Line 246
+            bool isAssignment = (dynamic_pointer_cast<AssignmentNode>(node) != nullptr);             // Line 247
+            bool isBinaryExpr = (dynamic_pointer_cast<BinaryExpressionNode>(node) != nullptr);       // Line 248
+            bool isUnaryExpr = (dynamic_pointer_cast<UnaryExpressionNode>(node) != nullptr);         // Line 249
+            bool isFuncCall = (dynamic_pointer_cast<FunctionCallNode>(node) != nullptr);             // Line 250
+            // Add any other node types that manage their primary 'children' through ASTNode::children directly
+            // and are also explicitly handled above.
+            
+            // If the node type isn't one that we *know* prints its children via specific getters...
+            if (!isPrintfOrScanf && !isExpressionStmt && !isProgramOrBlock && 
+                !isReturnNode && !isVarDecl && !isAssignment && 
+                !isBinaryExpr && !isUnaryExpr && !isFuncCall) {
+                 printIndent(indent + 1); cout << "Generic Children:" << endl;
+                 for (const auto &child : genericChildren) {
+                     printAST(child, indent + 2);
+                 }
             }
         }
     }
@@ -189,16 +260,37 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
 int main() {
     // === Step 1: Read code from stdin ===
     string line, source_code;
-    while (getline(cin, line)) {
-        source_code += line + "\n";
+    char ch;
+    while (cin.get(ch)) {
+        source_code += ch;
     }
+    if (source_code.empty() && !cin.eof() && !cin.bad() && !cin.fail()) { 
+         // Only show this specific error if not an expected empty input due to immediate EOF
+         // And make sure stream state is not bad/fail (which could be why it's empty)
+        //  if (isatty(fileno(stdin))) { // Heuristic: only print for interactive tty
+        //      // This can be noisy for piped empty input
+        //      // cerr << "No source code entered." << endl;
+        //  }
+    } else if (cin.bad() || (cin.fail() && !cin.eof())) {
+        cerr << "Failed to read source code from stdin due to stream error." << endl;
+        return 1;
+    }
+
 
     // === Step 2: Lexical Analysis ===
     Lexer lexer(source_code);
-    vector<Token> tokens = lexer.tokenize();
+    vector<Token> tokens;
+    try {
+        tokens = lexer.tokenize();
+    } catch (const std::exception& e) {
+        cerr << "Lexical Error: " << e.what() << endl;
+        return 1;
+    }
 
-    cout << "---TOKENS---\n";
+
+    cout << "---TOKENS---" << endl;
     for (const auto& token : tokens) {
+        // It's good practice to check tokenTypeToString can handle all TokenType enum values
         cout << " " << token.value << " ---->("
              << tokenTypeToString(token.type) << ") line: "
              << token.line << ", col: " << token.col << endl;
@@ -206,21 +298,28 @@ int main() {
 
     // === Step 3: Parse tokens into AST ===
     Parser parser(tokens);
-    shared_ptr<ProgramNode> ast_root = parser.parse();
+    shared_ptr<ProgramNode> ast_root = parser.parse(); // parser.parse() should not return nullptr based on its impl
 
-    cout << "---AST---\n";
-    if (ast_root) {
-        printAST(ast_root);
-    } else {
-        cerr << "Parsing failed to produce an AST root." << endl;
-        return 1;
-    }
+    cout << "---AST---" << endl;
+    // ast_root itself will be non-null. 
+    // We print it regardless; if parsing failed internally, ProgramNode might be empty
+    // and parser would have printed errors to cerr.
+    printAST(ast_root);
+
 
     // === Step 4: Transpile to Python ===
     Transpiler transpiler;
-    string python_code = transpiler.transpile(ast_root);
-
-    cout << "---PYTHON_CODE---\n";
+    string python_code;
+    try {
+        // Transpile even if AST is "empty" (e.g., only ProgramNode from failed parse)
+        // The transpiler should gracefully handle an empty program or nodes that might be null.
+        python_code = transpiler.transpile(ast_root);
+    } catch (const std::exception& e) {
+        cerr << "Transpilation Error: " << e.what() << endl;
+        // Continue to print whatever python_code might exist (e.g. preamble) or if it's empty.
+    }
+    
+    cout << "---PYTHON_CODE---" << endl;
     cout << python_code << endl;
 
     return 0;

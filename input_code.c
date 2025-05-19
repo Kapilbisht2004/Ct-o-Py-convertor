@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<stdbool.h>
 /*this is my code
 to be converted*/
 int calculateSum(int a, int b)
@@ -8,27 +9,33 @@ int calculateSum(int a, int b)
     return result;
 }
 
-void main()
-{
-    int x = 10;
-    int y;
-    y = 20;
-    if (x > 5)
-    {
-        x = x + (y * 2);
-        y=calculateSum(x, y); // Expression statement with function call
+int main() {
+    int a = 10;
+    float b = 3.14;
+    char c = 'x';
+    bool flag = true;
+
+    printf("Value of a: %d\n", a);
+    scanf("%d", &a);
+
+    if (a > 5) {
+        print("Greater than 5");
+    } else {
+        print("Less than or equal to 5");
     }
-    else
-    {
-        x = 0;
+
+    for (int i = 0; i < a; i = i + 1) {
+        print("Loop iteration");
     }
-    while (x < 15)
-    {
-        x = x + 1;
+
+    for (int i = 0; i < a; i = i *5) {
+        print("Loop iteration");
     }
-    for (int i = 0; i < 3; i = i * 2)
-    {
-        y = y - 1;
+
+    while (a > 0) {
+        a = a - 1;
+        print("Counting down");
     }
-    return 0; // Return with no value (void context)
+
+    return 0;
 }
