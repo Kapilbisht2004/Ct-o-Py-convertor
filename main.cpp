@@ -45,12 +45,6 @@ void printAST(const shared_ptr<ASTNode> &node, int indent) {
         cout << "(" << p->type_name << ")" << endl;
         printAST(p->getExpression(), indent + 1);
     }
-    else if (auto p = dynamic_pointer_cast<PrintNode>(node)) { 
-        printIndent(indent);
-        cout << "(" << p->type_name << ")" << endl;
-        printIndent(indent + 1); cout << "Expression:" << endl;
-        printAST(p->getExpression(), indent + 2);
-    }
     else if (auto p = dynamic_pointer_cast<PrintfNode>(node)) { 
         printIndent(indent);
         cout << "(" << p->type_name << ")" << endl;
