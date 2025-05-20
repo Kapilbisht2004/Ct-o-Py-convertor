@@ -24,7 +24,6 @@ private:
     string transpileReturnStatement(shared_ptr<ReturnNode> stmt);
     string transpileBlock(shared_ptr<BlockNode> block, int current_indent_level);
     string transpileFunctionDeclaration(shared_ptr<FunctionDeclarationNode> funcDecl);
-    string transpilePrintStatement(shared_ptr<PrintNode> stmt);         // For 'print' keyword
     string transpilePrintfStatement(shared_ptr<PrintfNode> stmt);       // For 'printf'
     string transpileScanfStatement(shared_ptr<ScanfNode> stmt);         // For 'scanf'
     string transpileBreakStatement(shared_ptr<BreakNode> stmt);

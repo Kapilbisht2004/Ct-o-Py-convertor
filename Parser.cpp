@@ -135,8 +135,6 @@ shared_ptr<StatementNode> Parser::parseStatement()
         return parseContinue();
     if (match(TokenType::Symbol, "{"))
         return parseBlock();
-    if (match(TokenType::Keyword, "print"))
-        return parsePrint();
 
     // Handle printf and scanf (assuming they are lexed as Identifiers)
     if (check(TokenType::Identifier, "printf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
@@ -164,19 +162,6 @@ shared_ptr<StatementNode> Parser::parseStatement()
     }
 
     return parseExpressionStatement();
-}
-
-shared_ptr<PrintNode> Parser::parsePrint()
-{
-    auto printNode = make_shared<PrintNode>();
-    consume(TokenType::Symbol, "(", "Expected '(' after 'print'.");
-    if (!check(TokenType::Symbol, ")"))
-    {
-        printNode->addChild(parseExpression());
-    }
-    consume(TokenType::Symbol, ")", "Expected ')' after print expression or empty print call.");
-    consume(TokenType::Symbol, ";", "Expected ';' after print statement.");
-    return printNode;
 }
 
 shared_ptr<PrintfNode> Parser::parsePrintfStatement()
@@ -288,6 +273,7 @@ shared_ptr<WhileNode> Parser::parseWhile()
     whileNode->setBody(parseStatement());
     return whileNode;
 }
+
 shared_ptr<ForNode> Parser::parseFor()
 {
     // 'for' keyword was matched
@@ -296,8 +282,7 @@ shared_ptr<ForNode> Parser::parseFor()
     // Initializer
     if (!check(TokenType::Symbol, ";"))
     {
-        if (check(TokenType::Keyword, "int") || check(TokenType::Keyword, "char") ||
-            check(TokenType::Keyword, "bool") || check(TokenType::Keyword, "string") ||
+        if (check(TokenType::Keyword, "int") ||
             check(TokenType::Keyword, "float"))
         {
             // Parse variable declaration but *without* consuming the type keyword yet,

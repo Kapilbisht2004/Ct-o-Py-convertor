@@ -401,12 +401,7 @@ Token Lexer::nextToken() {
             {"struct", true}, {"switch", true}, {"typedef", true}, {"union", true}, 
             {"unsigned", true}, {"void", true}, {"volatile", true}, {"while", true},
             // Boolean types
-            {"_Bool", true}, // C99 boolean type
             {"bool", true}, {"true", true}, {"false", true}, // C++ boolean type and literals
-            // C++ specific keywords (if needed)
-            {"class", true}, {"namespace", true}, {"template", true}, {"virtual", true},
-            {"public", true}, {"private", true}, {"protected", true}, {"friend", true},
-            {"new", true}, {"delete", true}, {"try", true}, {"catch", true}, {"throw", true}
         };
         
         if (keywords.find(value) != keywords.end()) {

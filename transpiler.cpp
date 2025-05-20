@@ -159,10 +159,6 @@ string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_i
     {
         return transpileFunctionDeclaration(funcDecl); // Handles its own indent for header and body
     }
-    else if (auto printStmt = dynamic_pointer_cast<PrintNode>(stmt))
-    {
-        statement_code = transpilePrintStatement(printStmt); // "print(...)\n"
-    }
     else if (auto printfStmt = dynamic_pointer_cast<PrintfNode>(stmt))
     {
         statement_code = transpilePrintfStatement(printfStmt); // "print(f\"...\")\n"
@@ -192,13 +188,6 @@ string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_i
     return indent(statement_code, base_indent_level);
 }
 
-// --- Leaf Statement Transpilers (return unindented Python lines, ending with \n) ---
-string Transpiler::transpilePrintStatement(shared_ptr<PrintNode> stmt)
-{ /* ... same, returns "print(...)\n" */
-    if (stmt->getExpression())
-        return "print(" + transpileExpression(stmt->getExpression()) + ")\n";
-    return "print()\n";
-}
 string Transpiler::transpilePrintfStatement(shared_ptr<PrintfNode> stmt)
 { /* ... same, returns "print(f\"...\")\n" */
     auto formatStringNode = dynamic_pointer_cast<StringLiteralNode>(stmt->getFormatStringExpression());
@@ -297,7 +286,7 @@ string Transpiler::transpileScanfStatement(shared_ptr<ScanfNode> stmt)
         else if (spec_token == "%f")
             result_code += current_target_var + " = float(" + rhs + ")\n";
         else if (spec_token == "%s")
-            result_code += current_target_var + " = str(" + rhs + ")\n";
+            result_code += current_target_var + " = " + rhs + "\n";
         else if (spec_token == "%c")
             result_code += current_target_var + " = (" + rhs + ")[0] if " + rhs + " else ''\n";
         else

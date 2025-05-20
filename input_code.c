@@ -36,6 +36,6 @@ int main() {
         a = a - 1;
         print("Counting down");
     }
-
+    int x = calculateSum(a,b);
     return 0;
 }

@@ -82,17 +82,6 @@ public:
     }
 };
 
-class PrintNode : public StatementNode { // For a generic "print" keyword
-public:
-    PrintNode() { type_name = "PrintNode"; }
-    shared_ptr<ExpressionNode> getExpression() const {
-        if (!children.empty()) {
-            return dynamic_pointer_cast<ExpressionNode>(children[0]);
-        }
-        return nullptr;
-    }
-};
-
 // Node for C-style printf
 class PrintfNode : public StatementNode {
 public:
@@ -392,7 +381,6 @@ private:
     shared_ptr<ReturnNode> parseReturn();
     shared_ptr<BreakNode> parseBreak();
     shared_ptr<ContinueNode> parseContinue();
-    shared_ptr<PrintNode> parsePrint(); // Generic print keyword
     shared_ptr<PrintfNode> parsePrintfStatement(); // New
     shared_ptr<ScanfNode> parseScanfStatement();   // New
     shared_ptr<StatementNode> parseDeclaration();
