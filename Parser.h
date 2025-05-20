@@ -203,15 +203,19 @@ public:
 
 class DeclarationNode : public StatementNode {
 public:
-    DeclarationNode(const string& declName, const string& declType)
-        : name(declName), type(declType) {}
+    DeclarationNode(const string& declName, const string& declType, shared_ptr<ExpressionNode> initExpr = nullptr)
+        : name(declName), type(declType), initialValue(initExpr) {}
+
     const string& getName() const { return name; }
     const string& getDeclaredType() const { return type; }
+    shared_ptr<ExpressionNode> getInitialValue() const { return initialValue; } // ✅ New getter
 
 protected:
     string name;
     string type;
+    shared_ptr<ExpressionNode> initialValue;  // ✅ New member
 };
+
 
 class VariableDeclarationNode : public DeclarationNode {
 public:

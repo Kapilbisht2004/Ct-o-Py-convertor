@@ -390,68 +390,140 @@ string Transpiler::transpileWhileStatement(shared_ptr<WhileNode> stmt, int base_
     string body_code = transpileStatement(stmt->getBody(), base_indent_level + 1);
     return while_header + body_code;
 }
+string Transpiler::transpileForStatement(shared_ptr<ForNode> forNode, int current_indent_level) {
+    string code;
 
-string Transpiler::transpileForStatement(shared_ptr<ForNode> stmt, int base_indent_level)
-{
-    string result_code = "";
-    if (stmt->getInitializer())
-    {
-        result_code += transpileStatement(stmt->getInitializer(), base_indent_level);
+    // Extract initializer
+    string loopVar;
+    string startValue = "0";
+    auto initializer = forNode->getInitializer();
+
+    if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(initializer)) {
+        loopVar = varDecl->getName();
+        if (auto initExpr = varDecl->getInitializer()) {
+            startValue = transpileExpression(initExpr);
+        }
+    } else if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(initializer)) {
+        auto assignExpr = assignStmt->getAssignment();
+        loopVar = assignExpr->getTargetName();
+        startValue = transpileExpression(assignExpr->getValue());
+    } else {
+        return code + indent("# Unsupported for-loop initializer\n", current_indent_level);
     }
 
-    string condition_str_py = stmt->getCondition() ? transpileExpression(stmt->getCondition()) : "True";
-    result_code += indent("while " + condition_str_py + ":\n", base_indent_level);
+    // Extract condition
+    string stopValue;
+    bool inclusive = false;
+    bool isLessComparison = true;
+    auto condition = forNode->getCondition();
 
-    string body_content = "";
-    if (stmt->getBody())
-    {
-        body_content += transpileStatement(stmt->getBody(), base_indent_level + 1);
-    }
-    if (stmt->getIncrement())
-    {
-        // Increment needs to be treated as a statement at the end of the loop body
-        string inc_expr_str = transpileExpression(stmt->getIncrement());
-        body_content += indent(inc_expr_str + "\n", base_indent_level + 1);
+    if (auto binaryCond = dynamic_pointer_cast<BinaryExpressionNode>(condition)) {
+        string op = binaryCond->getOperator();
+        auto left = binaryCond->getLeft();
+        auto right = binaryCond->getRight();
+
+        if (auto leftId = dynamic_pointer_cast<IdentifierNode>(left)) {
+            if (leftId->getName() == loopVar) {
+                stopValue = transpileExpression(right);
+                if (op == "<") isLessComparison = true;
+                else if (op == "<=") { isLessComparison = true; inclusive = true; }
+                else if (op == ">") isLessComparison = false;
+                else if (op == ">=") { isLessComparison = false; inclusive = true; }
+                else return code + indent("# Unsupported for-loop condition operator\n", current_indent_level);
+            } else return code + indent("# Unsupported for-loop condition structure\n", current_indent_level);
+        } else return code + indent("# Unsupported for-loop condition structure\n", current_indent_level);
+    } else return code + indent("# Unsupported for-loop condition type\n", current_indent_level);
+
+    // Extract increment and check if range is safe
+    int step = 1;
+    auto increment = forNode->getIncrement();
+    bool safeForRange = false;
+
+    if (auto assignInc = dynamic_pointer_cast<AssignmentNode>(increment)) {
+        if (assignInc->getTargetName() == loopVar) {
+            if (auto binaryInc = dynamic_pointer_cast<BinaryExpressionNode>(assignInc->getValue())) {
+                string op = binaryInc->getOperator();
+                if ((op == "+" || op == "-") && dynamic_pointer_cast<NumberNode>(binaryInc->getRight())) {
+                    int val = stoi(dynamic_pointer_cast<NumberNode>(binaryInc->getRight())->getValue());
+                    step = (op == "+") ? val : -val;
+                    safeForRange = true;
+                }
+            }
+        }
+    } else if (auto unaryInc = dynamic_pointer_cast<UnaryExpressionNode>(increment)) {
+        if (auto operandId = dynamic_pointer_cast<IdentifierNode>(unaryInc->getOperand())) {
+            if (operandId->getName() == loopVar) {
+                string op = unaryInc->getOperator();
+                if (op == "++") step = 1;
+                else if (op == "--") step = -1;
+                safeForRange = true;
+            }
+        }
     }
 
-    // If body_content is empty after all this, ensure 'pass'
-    if (body_content.empty() || std::all_of(body_content.begin(), body_content.end(), [](unsigned char c)
-                                            { return std::isspace(c); }))
-    {
-        result_code += indent("pass\n", base_indent_level + 1);
-    }
-    else
-    {
-        result_code += body_content;
+    // Adjust stop value for inclusive comparison
+    if (inclusive) {
+        if (step > 0) stopValue = "(" + stopValue + " + 1)";
+        else stopValue = "(" + stopValue + " - 1)";
     }
 
-    return result_code;
+    // Transpile using range() if safe
+    if (safeForRange) {
+        code += indent("for " + loopVar + " in range(" + startValue + ", " + stopValue + ", " + to_string(step) + "):\n", current_indent_level);
+        auto body = forNode->getBody();
+        if (body) {
+            code += transpileStatement(body, current_indent_level + 1);
+        } else {
+            code += indent("pass\n", current_indent_level + 1);
+        }
+    } else {
+        // fallback to while loop
+        code += indent(loopVar + " = " + startValue + "\n", current_indent_level);
+        code += indent("while " + transpileExpression(condition) + ":\n", current_indent_level);
+
+        string bodyCode = "";
+        if (auto body = forNode->getBody()) {
+            bodyCode += transpileStatement(body, current_indent_level + 1);
+        } else {
+            bodyCode += indent("pass\n", current_indent_level + 1);
+        }
+
+        // Append manual increment at end of loop body
+        string incLine = transpileExpression(increment) + "\n";
+        bodyCode += indent(incLine, current_indent_level + 1);
+        code += bodyCode;
+    }
+
+    return code;
 }
+
 
 string Transpiler::transpileFunctionDeclaration(shared_ptr<FunctionDeclarationNode> funcDecl)
 {
-    // Function definition is at indent level 0 (or its context level if nested, but not handled here)
-    string header = "def " + funcDecl->getName() + "(";
+    const int base_indent = 0;
+    ostringstream header;
+    header << "def " << funcDecl->getName() << "(";
+
     const auto &paramNames = funcDecl->getParamNames();
     for (size_t i = 0; i < paramNames.size(); ++i)
     {
-        header += paramNames[i];
-        if (i < paramNames.size() - 1)
-            header += ", ";
+        if (i > 0) header << ", ";
+        header << paramNames[i];
     }
-    header += "):\n";
-    string code = indent(header, 0); // Assuming top-level function is at base_indent 0
+    header << "):\n";
+
+    string code = indent(header.str(), base_indent);
 
     auto bodyNode = funcDecl->getBody();
     if (bodyNode)
-    {                                                // bodyNode is a BlockNode
-        code += transpileStatement(bodyNode, 0 + 1); // Body contents start one level deeper
+    {
+        code += transpileStatement(bodyNode, base_indent + 1);
     }
     else
     {
-        code += indent("pass\n", 0 + 1);
+        code += indent("pass\n", base_indent + 1);
     }
-    return code + "\n";
+    return code;
 }
 
 // --- Expression Transpilers (return Python expression strings, no newlines, no leading/trailing indent) ---
