@@ -153,7 +153,7 @@ string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_i
     else if (auto blockStmt = dynamic_pointer_cast<BlockNode>(stmt))
     {
         // transpileBlock takes the indent level for ITS CONTENTS.
-        return transpileBlock(blockStmt, base_indent_level + 1); // Standalone block's content is 1 level deeper
+        return transpileBlock(blockStmt, base_indent_level); // Standalone block's content is 1 level deeper
     }
     else if (auto funcDecl = dynamic_pointer_cast<FunctionDeclarationNode>(stmt))
     {
