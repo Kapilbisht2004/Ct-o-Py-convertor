@@ -5,6 +5,9 @@
 #include <algorithm> // For std::all_of
 #include <cctype>    // For ::isspace
 
+// ADD THESE INCLUDES FOR THE TEMPORARY LEXER/PARSER IN transpileMacroBody
+#include "Lexer.h"  // We already have MacroDefinition from transpiler.h, but good to be explicit for Lexer class
+#include "Parser.h" // For Parser class
 // Constructor
 Transpiler::Transpiler() {}
 
@@ -92,24 +95,177 @@ string Transpiler::indent(const string &code_block, int level_delta, bool add_pa
     return result;
 }
 
-// Entry point
-string Transpiler::transpile(shared_ptr<ProgramNode> program)
+// IMPLEMENT THE NEW HELPER FUNCTION
+string Transpiler::transpileMacroBodyToPythonExpression(const string &c_macro_body_source, const vector<string> &macro_params)
 {
-    if (!program)
-        return "Program AST is null\n";
-    return transpileProgram(program);
+    if (c_macro_body_source.empty())
+    {
+        return "None"; // Or handle as error, or empty string if appropriate
+    }
+
+    // Create a temporary lexer and parser for the macro body.
+    // IMPORTANT: This temporary lexer should ideally not process further #defines within the macro body
+    // or use a version of the lexer that has #define processing disabled for this specific call.
+    // For simplicity now, our current Lexer will try to process them if they exist.
+    // A more robust solution might involve a Lexer constructor flag to disable preprocessor handling.
+    Lexer tempLexer(c_macro_body_source);
+    vector<Token> bodyTokens;
+    try
+    {
+        bodyTokens = tempLexer.tokenize();
+        // We expect the body to be an expression, so it should end with EOF.
+        // Remove the EOF token if present, as parseExpression doesn't expect it at the end of its input.
+        if (!bodyTokens.empty() && bodyTokens.back().type == TokenType::EndOfFile)
+        {
+            bodyTokens.pop_back();
+        }
+    }
+    catch (const std::exception &e)
+    {
+        cerr << "Transpiler Error: Could not tokenize macro body '" << c_macro_body_source << "': " << e.what() << endl;
+        return "#ERROR_TOKENIZING_MACRO_BODY";
+    }
+
+    // Filter out any macros defined *within* this macro body's tokenization.
+    // This is a simple guard; complex nested preproc would need more.
+    if (!tempLexer.getDefinedMacros().empty())
+    {
+        cerr << "Transpiler Warning: Nested #define found and ignored within macro body: " << c_macro_body_source << endl;
+    }
+
+    Parser tempParser(bodyTokens);
+    shared_ptr<ExpressionNode> bodyExpr;
+    try
+    {
+        if (bodyTokens.empty() && !c_macro_body_source.empty() &&
+            std::all_of(c_macro_body_source.begin(), c_macro_body_source.end(), [](unsigned char c)
+                        { return std::isspace(c); }))
+        {
+            // If body was just whitespace, it's effectively empty.
+            return "None"; // Or "" if that's more suitable for an empty expression in Python.
+        }
+        if (bodyTokens.empty() && !c_macro_body_source.empty())
+        {
+            // If body tokens are empty but C source was not (just whitespace), it's an issue.
+            // If C source was also empty, 'return "None"' above handled it.
+            // This case could mean the lexer consumed everything as skippable.
+            cerr << "Transpiler Error: Macro body '" << c_macro_body_source << "' resulted in no tokens for parsing as expression." << endl;
+            return "#ERROR_EMPTY_TOKENS_FOR_MACRO_BODY";
+        }
+        if (bodyTokens.empty() && c_macro_body_source.empty())
+        {
+            return "None"; // Macro body was literally empty
+        }
+
+        bodyExpr = tempParser.parseExpression(); // This should parse up to where it thinks the expression ends.
+                                                 // If there are trailing tokens, parseExpression might not consume them all.
+                                                 // We need to ensure the parser can handle a stream that is *only* an expression.
+    }
+    catch (const std::runtime_error &e)
+    {
+        // Check if the error is about "Expected primary expression, but got EndOfFile"
+        // This can happen if the macro body is empty or only whitespace after tokenization.
+        string error_what = e.what();
+        if (bodyTokens.empty() && error_what.find("Expected primary expression") != string::npos && error_what.find("EndOfFile") != string::npos)
+        {
+            // Macro body was effectively empty (e.g. just comments)
+            return "None"; // Or an empty string, depending on how Python should treat empty macro bodies
+        }
+        cerr << "Transpiler Error: Could not parse macro body '" << c_macro_body_source << "' as expression: " << e.what() << endl;
+        return "#ERROR_PARSING_MACRO_BODY";
+    }
+
+    if (!bodyExpr)
+    {
+        cerr << "Transpiler Error: Parsing macro body '" << c_macro_body_source << "' yielded null expression." << endl;
+        return "#ERROR_NULL_EXPR_MACRO_BODY";
+    }
+
+    // The transpiled expression might use macro parameters.
+    // For this simple version, C macro expansion is textual. Python functions will handle parameters.
+    // No direct text substitution in this transpiler stage for macro parameters.
+    return transpileExpression(bodyExpr);
 }
 
-// Transpile a ProgramNode
-string Transpiler::transpileProgram(shared_ptr<ProgramNode> program)
+// // Entry point
+// string Transpiler::transpile(shared_ptr<ProgramNode> program)
+// {
+//     if (!program)
+//         return "Program AST is null\n";
+//     return transpileProgram(program);
+// }
+
+// MODIFY Transpiler::transpile
+string Transpiler::transpile(shared_ptr<ProgramNode> program, const vector<MacroDefinition> &macros)
 {
-    string code;
+    if (!program)
+    { // Should not happen if parser always returns a ProgramNode
+        return "# Error: Program AST is null\n";
+    }
+    return transpileProgram(program, macros); // Pass macros along
+}
+
+// // Transpile a ProgramNode
+// string Transpiler::transpileProgram(shared_ptr<ProgramNode> program)
+// {
+//     string code;
+//     for (const auto &stmt : program->getStatements())
+//     {
+//         // Top-level statements are at indent level 0.
+//         code += transpileStatement(stmt, 0);
+//     }
+//     return code;
+// }
+string Transpiler::transpileProgram(shared_ptr<ProgramNode> program, const vector<MacroDefinition> &macros)
+{
+    string py_code;
+
+    // --- 1. Transpile Macro Definitions ---
+    string transpiled_macros_code;
+    for (const auto &macroDef : macros)
+    {
+        if (!macroDef.valid)
+            continue; // Skip invalid macros
+
+        if (macroDef.isFunctionLike)
+        {
+            string pyParamsStr;
+            for (size_t i = 0; i < macroDef.parameters.size(); ++i)
+            {
+                pyParamsStr += macroDef.parameters[i];
+                if (i < macroDef.parameters.size() - 1)
+                    pyParamsStr += ", ";
+            }
+            transpiled_macros_code += "def " + macroDef.name + "(" + pyParamsStr + "):\n";
+
+            string pyMacroBodyExpr = transpileMacroBodyToPythonExpression(macroDef.body, macroDef.parameters);
+            // For function-like macros, we assume the body is an expression to be returned.
+            transpiled_macros_code += indent("return " + pyMacroBodyExpr + "\n", 1);
+        }
+        else
+        {
+            // Object-like macro
+            string pyMacroBodyExpr = transpileMacroBodyToPythonExpression(macroDef.body, {}); // No params
+            transpiled_macros_code += macroDef.name + " = " + pyMacroBodyExpr + "\n";
+        }
+    }
+    if (!transpiled_macros_code.empty())
+    {
+        transpiled_macros_code += "\n"; // Add a blank line after macro definitions
+    }
+
+    py_code += transpiled_macros_code;
+
+    // --- 2. Transpile Program Statements ---
+    string program_statements_code;
     for (const auto &stmt : program->getStatements())
     {
         // Top-level statements are at indent level 0.
-        code += transpileStatement(stmt, 0);
+        program_statements_code += transpileStatement(stmt, 0);
     }
-    return code;
+    py_code += program_statements_code;
+
+    return py_code;
 }
 
 // Dispatch to the correct statement transpiler.
