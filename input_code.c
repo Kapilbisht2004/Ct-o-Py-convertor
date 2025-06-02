@@ -2,6 +2,8 @@
 #include<stdbool.h>
 /*this is my code
 to be converted*/
+
+#define rr 10
 int calculateSum(int a, int b)
 {
     int result;
@@ -10,6 +12,9 @@ int calculateSum(int a, int b)
 }
 
 int main() {
+    int arr[2];
+    arr[0]=4;
+    arr[1]=6;
     int a = 10;
     float b = 3.14;
     char c = 'x';

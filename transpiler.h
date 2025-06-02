@@ -16,10 +16,14 @@ private:
     string transpileProgram(shared_ptr<ProgramNode> program, const vector<MacroDefinition> &macros);
     // shared_ptr<ExpressionNode> parseExpression();
 
+    string transpileArrayDeclaration(shared_ptr<ArrayDeclarationNode> decl); // Changed to return raw line
+    string transpileArraySubscriptNode(shared_ptr<ArraySubscriptNode> expr);
+
     // Statements
     // string transpileStatement(shared_ptr<StatementNode> stmt, int current_indent_level = 0);
     string transpileStatement(shared_ptr<StatementNode> stmt, int current_indent_level = 0);
-    string transpileAssignmentStatement(shared_ptr<AssignmentStatementNode> stmt);
+    // string transpileStatement(shared_ptr<StatementNode> stmt, int current_indent_level = 0);
+    // string transpileAssignmentStatement(shared_ptr<AssignmentStatementNode> stmt);
     string transpileVariableDeclaration(shared_ptr<VariableDeclarationNode> decl);
     string transpileIfStatement(shared_ptr<IfNode> stmt, int current_indent_level);
     string transpileWhileStatement(shared_ptr<WhileNode> stmt, int current_indent_level);

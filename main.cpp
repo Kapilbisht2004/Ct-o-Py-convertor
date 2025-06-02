@@ -185,7 +185,60 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         printIndent(indent);
         cout << "(" << p->type_name << ")" << endl;
     }
-    else if (auto p = dynamic_pointer_cast<VariableDeclarationNode>(node))
+
+    else if (auto p = dynamic_pointer_cast<ArrayDeclarationNode>(node))
+    {
+        printIndent(indent);
+        cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName();
+        cout << "[";
+        if (p->getSizeExpression())
+        {
+            // For brevity, if it's a simple number, print it, else just "expr"
+            if (auto sizeNum = dynamic_pointer_cast<NumberNode>(p->getSizeExpression()))
+            {
+                cout << sizeNum->getValue();
+            }
+            else
+            {
+                cout << "expr"; // Placeholder for complex expression
+            }
+        }
+        else
+        {
+            cout << "NO_SIZE_EXPR"; // Should ideally not happen if parser validates
+        }
+        cout << "]" << endl;
+        // If VariableDeclarationNode (base) has an initializer member that ArrayDeclarationNode uses:
+        if (p->getInitializer())
+        { // Check if this method exists and is used
+            printIndent(indent + 1);
+            cout << "Initializer (from base):" << endl;
+            printAST(p->getInitializer(), indent + 2);
+        }
+    } // --- ADD ArraySubscriptNode PRINTER ---
+    else if (auto p = dynamic_pointer_cast<ArraySubscriptNode>(node))
+    {
+        printIndent(indent);
+        cout << "(" << p->type_name << ")" << endl;
+        printIndent(indent + 1);
+        cout << "Array Expression:" << endl;
+        printAST(p->getArrayExpression(), indent + 2);
+        printIndent(indent + 1);
+        cout << "Index Expression:" << endl;
+        printAST(p->getIndexExpression(), indent + 2);
+    }
+    // else if (auto p = dynamic_pointer_cast<VariableDeclarationNode>(node))
+    // {
+    //     printIndent(indent);
+    //     cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << endl;
+    //     if (p->getInitializer())
+    //     {
+    //         printIndent(indent + 1);
+    //         cout << "Initializer:" << endl;
+    //         printAST(p->getInitializer(), indent + 2);
+    //     }
+    // }
+    else if (auto p = dynamic_pointer_cast<VariableDeclarationNode>(node)) // This should come AFTER ArrayDeclarationNode if ArrayDecl inherits from VarDecl
     {
         printIndent(indent);
         cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << endl;
@@ -196,6 +249,29 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
             printAST(p->getInitializer(), indent + 2);
         }
     }
+    // else if (auto p = dynamic_pointer_cast<FunctionDeclarationNode>(node))
+    // {
+    //     printIndent(indent);
+    //     cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << "(";
+    //     const auto paramNames = p->getParamNames();
+    //     const auto paramTypes = p->getParamTypes();
+    //     for (size_t i = 0; i < paramNames.size(); ++i)
+    //     {
+    //         cout << paramTypes[i] << " " << paramNames[i] << (i < paramNames.size() - 1 ? ", " : "");
+    //     }
+    //     cout << ")" << endl;
+    //     if (p->getBody())
+    //     {
+    //         printIndent(indent + 1);
+    //         cout << "Body:" << endl;
+    //         printAST(p->getBody(), indent + 2);
+    //     }
+    //     else
+    //     {
+    //         printIndent(indent + 1);
+    //         cout << "(Forward Declaration / No Body)" << endl;
+    //     }
+    // }
     else if (auto p = dynamic_pointer_cast<FunctionDeclarationNode>(node))
     {
         printIndent(indent);
@@ -225,14 +301,37 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         cout << "(" << p->type_name << ")" << endl;
         printAST(p->getAssignment(), indent + 1);
     }
+    // else if (auto p = dynamic_pointer_cast<AssignmentNode>(node))
+    // {
+    //     printIndent(indent);
+    //     cout << "(" << p->type_name << "): Target '" << p->getTargetName() << "' =" << endl;
+    //     printIndent(indent + 1);
+    //     cout << "Value:" << endl;
+    //     printAST(p->getValue(), indent + 2);
+    // }
     else if (auto p = dynamic_pointer_cast<AssignmentNode>(node))
     {
         printIndent(indent);
-        cout << "(" << p->type_name << "): Target '" << p->getTargetName() << "' =" << endl;
+        // AssignmentNode is an expression, its operator is implicitly '='
+        cout << "(" << p->type_name << ") Operator '='" << endl;
         printIndent(indent + 1);
-        cout << "Value:" << endl;
-        printAST(p->getValue(), indent + 2);
+        cout << "LValue (Target):" << endl;
+        printAST(p->getLValue(), indent + 2); // Assumes getLValue()
+        printIndent(indent + 1);
+        cout << "RValue (Value):" << endl;
+        printAST(p->getRValue(), indent + 2); // Assumes getRValue()
     }
+    // else if (auto p = dynamic_pointer_cast<BinaryExpressionNode>(node))
+    // {
+    //     printIndent(indent);
+    //     cout << "(" << p->type_name << "): Operator '" << p->getOperator() << "'" << endl;
+    //     printIndent(indent + 1);
+    //     cout << "Left:" << endl;
+    //     printAST(p->getLeft(), indent + 2);
+    //     printIndent(indent + 1);
+    //     cout << "Right:" << endl;
+    //     printAST(p->getRight(), indent + 2);
+    // }
     else if (auto p = dynamic_pointer_cast<BinaryExpressionNode>(node))
     {
         printIndent(indent);
@@ -297,35 +396,94 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         printIndent(indent);
         cout << "(" << p->type_name << "): " << (p->getValue() ? "true" : "false") << endl;
     }
-    else
-    { // Fallback for unknown node types or types not explicitly handled above
+    else if (auto p = dynamic_pointer_cast<ArrayDeclarationNode>(node))
+    {
         printIndent(indent);
-        cout << "Unknown or unhandled ASTNode type: " << (node->type_name.empty() ? "(no type_name field set)" : node->type_name) << endl;
-
-        const auto &genericChildren = node->getChildren();
-        if (!genericChildren.empty())
+        cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName();
+        cout << "[";
+        if (p->getSizeExpression())
         {
-            // The following booleans are used to avoid printing generic children
-            // if they are already explicitly printed by specific handlers above.
-            // This logic is to satisfy IntelliSense about converting shared_ptr to bool.
-            bool isPrintfOrScanf = (dynamic_pointer_cast<PrintfNode>(node) != nullptr) ||
-                                   (dynamic_pointer_cast<ScanfNode>(node) != nullptr);
-            bool isExpressionStmt = (dynamic_pointer_cast<ExpressionStatementNode>(node) != nullptr); // Line 243
-            bool isProgramOrBlock = (dynamic_pointer_cast<ProgramNode>(node) != nullptr) ||
-                                    (dynamic_pointer_cast<BlockNode>(node) != nullptr);
-            bool isReturnNode = (dynamic_pointer_cast<ReturnNode>(node) != nullptr);           // Line 245
-            bool isVarDecl = (dynamic_pointer_cast<VariableDeclarationNode>(node) != nullptr); // Line 246
-            bool isAssignment = (dynamic_pointer_cast<AssignmentNode>(node) != nullptr);       // Line 247
-            bool isBinaryExpr = (dynamic_pointer_cast<BinaryExpressionNode>(node) != nullptr); // Line 248
-            bool isUnaryExpr = (dynamic_pointer_cast<UnaryExpressionNode>(node) != nullptr);   // Line 249
-            bool isFuncCall = (dynamic_pointer_cast<FunctionCallNode>(node) != nullptr);       // Line 250
-            // Add any other node types that manage their primary 'children' through ASTNode::children directly
-            // and are also explicitly handled above.
+            // For brevity, if it's a simple number, print it, else just "expr"
+            if (auto sizeNum = dynamic_pointer_cast<NumberNode>(p->getSizeExpression()))
+            {
+                cout << sizeNum->getValue();
+            }
+            else
+            {
+                // Or you can recurse to print the full expression:
+                // cout << endl; printAST(p->getSizeExpression(), indent + 1); printIndent(indent);
+                cout << "expr"; // Placeholder for complex expression
+            }
+        }
+    }
+        // else
+        // { // Fallback for unknown node types or types not explicitly handled above
+        //     printIndent(indent);
+        //     cout << "Unknown or unhandled ASTNode type: " << (node->type_name.empty() ? "(no type_name field set)" : node->type_name) << endl;
 
-            // If the node type isn't one that we *know* prints its children via specific getters...
-            if (!isPrintfOrScanf && !isExpressionStmt && !isProgramOrBlock &&
-                !isReturnNode && !isVarDecl && !isAssignment &&
-                !isBinaryExpr && !isUnaryExpr && !isFuncCall)
+        //     const auto &genericChildren = node->getChildren();
+        //     if (!genericChildren.empty())
+        //     {
+        //         // The following booleans are used to avoid printing generic children
+        //         // if they are already explicitly printed by specific handlers above.
+        //         // This logic is to satisfy IntelliSense about converting shared_ptr to bool.
+        //         bool isPrintfOrScanf = (dynamic_pointer_cast<PrintfNode>(node) != nullptr) ||
+        //                                (dynamic_pointer_cast<ScanfNode>(node) != nullptr);
+        //         bool isExpressionStmt = (dynamic_pointer_cast<ExpressionStatementNode>(node) != nullptr); // Line 243
+        //         bool isProgramOrBlock = (dynamic_pointer_cast<ProgramNode>(node) != nullptr) ||
+        //                                 (dynamic_pointer_cast<BlockNode>(node) != nullptr);
+        //         bool isReturnNode = (dynamic_pointer_cast<ReturnNode>(node) != nullptr);           // Line 245
+        //         bool isVarDecl = (dynamic_pointer_cast<VariableDeclarationNode>(node) != nullptr); // Line 246
+        //         bool isAssignment = (dynamic_pointer_cast<AssignmentNode>(node) != nullptr);       // Line 247
+        //         bool isBinaryExpr = (dynamic_pointer_cast<BinaryExpressionNode>(node) != nullptr); // Line 248
+        //         bool isUnaryExpr = (dynamic_pointer_cast<UnaryExpressionNode>(node) != nullptr);   // Line 249
+        //         bool isFuncCall = (dynamic_pointer_cast<FunctionCallNode>(node) != nullptr);       // Line 250
+        //         // Add any other node types that manage their primary 'children' through ASTNode::children directly
+        //         // and are also explicitly handled above.
+
+        //         // If the node type isn't one that we *know* prints its children via specific getters...
+        //         if (!isPrintfOrScanf && !isExpressionStmt && !isProgramOrBlock &&
+        //             !isReturnNode && !isVarDecl && !isAssignment &&
+        //             !isBinaryExpr && !isUnaryExpr && !isFuncCall)
+        //         {
+        //             printIndent(indent + 1);
+        //             cout << "Generic Children:" << endl;
+        //             for (const auto &child : genericChildren)
+        //             {
+        //                 printAST(child, indent + 2);
+        //             }
+        //         }
+        //     }
+        // }
+        else // Fallback for unknown node types or types not explicitly handled above
+        {
+            printIndent(indent);
+            string type_name_str = node->type_name.empty() ? typeid(*node).name() : node->type_name;
+            cout << "Unknown or unhandled ASTNode type: " << type_name_str << endl;
+
+            const auto &genericChildren = node->getChildren();
+            // Check if it's a type whose children are explicitly handled by its own getter methods
+            // This list helps avoid redundant printing of children.
+            bool children_explicitly_handled =
+                (dynamic_pointer_cast<ProgramNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<BlockNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<ExpressionStatementNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<PrintfNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<ScanfNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<IfNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<WhileNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<ForNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<ReturnNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<ArrayDeclarationNode>(node) != nullptr) || // Added to this check
+                (dynamic_pointer_cast<ArraySubscriptNode>(node) != nullptr) ||   // Added to this check
+                (dynamic_pointer_cast<VariableDeclarationNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<FunctionDeclarationNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<AssignmentNode>(node) != nullptr) || // Updated if structure changed
+                (dynamic_pointer_cast<BinaryExpressionNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<UnaryExpressionNode>(node) != nullptr) ||
+                (dynamic_pointer_cast<FunctionCallNode>(node) != nullptr);
+
+            if (!genericChildren.empty() && !children_explicitly_handled)
             {
                 printIndent(indent + 1);
                 cout << "Generic Children:" << endl;
@@ -336,112 +494,111 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
             }
         }
     }
-}
 
-int main()
-{
-    // === Step 1: Read code from stdin ===
-    string line, source_code;
-    char ch;
-    while (cin.get(ch))
+    int main()
     {
-        source_code += ch;
-    }
-    if (source_code.empty() && !cin.eof() && !cin.bad() && !cin.fail())
-    {
-        // Only show this specific error if not an expected empty input due to immediate EOF
-        // And make sure stream state is not bad/fail (which could be why it's empty)
-        //  if (isatty(fileno(stdin))) { // Heuristic: only print for interactive tty
-        //      // This can be noisy for piped empty input
-        //      // cerr << "No source code entered." << endl;
-        //  }
-    }
-    else if (cin.bad() || (cin.fail() && !cin.eof()))
-    {
-        cerr << "Failed to read source code from stdin due to stream error." << endl;
-        return 1;
-    }
-
-    // === Step 2: Lexical Analysis ===
-    Lexer lexer(source_code);
-    vector<Token> tokens;
-    try
-    {
-        tokens = lexer.tokenize();
-    }
-    catch (const std::exception &e)
-    {
-        cerr << "Lexical Error: " << e.what() << endl;
-        return 1;
-    }
-    // ADD THIS: Get defined macros
-    const auto &definedMacros = lexer.getDefinedMacros();
-
-    cout << "---TOKENS---" << endl;
-    for (const auto &token : tokens)
-    {
-        cout << " " << token.value << " ---->("
-             << tokenTypeToString(token.type) << ") line: "
-             << token.line << ", col: " << token.col << endl;
-    }
-
-    cout << "---TOKENS---" << endl;
-    for (const auto &token : tokens)
-    {
-        // It's good practice to check tokenTypeToString can handle all TokenType enum values
-        cout << " " << token.value << " ---->("
-             << tokenTypeToString(token.type) << ") line: "
-             << token.line << ", col: " << token.col << endl;
-    }
-
-    cout << "\n---DEFINED MACROS---" << endl;
-    if (definedMacros.empty())
-    {
-        cout << "(No macros defined or parsed)" << endl;
-    }
-    for (const auto &macro : definedMacros)
-    {
-        if (!macro.valid)
+        // === Step 1: Read code from stdin ===
+        string line, source_code;
+        char ch;
+        while (cin.get(ch))
         {
-            cout << "Invalid Macro (skipped): " << macro.name << " (defined on line " << macro.line << ")" << endl;
-            continue;
+            source_code += ch;
         }
-        cout << "Macro: " << macro.name;
-        if (macro.isFunctionLike)
+        if (source_code.empty() && !cin.eof() && !cin.bad() && !cin.fail())
         {
-            cout << "(";
-            for (size_t i = 0; i < macro.parameters.size(); ++i)
+            // Only show this specific error if not an expected empty input due to immediate EOF
+            // And make sure stream state is not bad/fail (which could be why it's empty)
+            //  if (isatty(fileno(stdin))) { // Heuristic: only print for interactive tty
+            //      // This can be noisy for piped empty input
+            //      // cerr << "No source code entered." << endl;
+            //  }
+        }
+        else if (cin.bad() || (cin.fail() && !cin.eof()))
+        {
+            cerr << "Failed to read source code from stdin due to stream error." << endl;
+            return 1;
+        }
+
+        // === Step 2: Lexical Analysis ===
+        Lexer lexer(source_code);
+        vector<Token> tokens;
+        try
+        {
+            tokens = lexer.tokenize();
+        }
+        catch (const std::exception &e)
+        {
+            cerr << "Lexical Error: " << e.what() << endl;
+            return 1;
+        }
+        // ADD THIS: Get defined macros
+        const auto &definedMacros = lexer.getDefinedMacros();
+
+        cout << "---TOKENS---" << endl;
+        for (const auto &token : tokens)
+        {
+            cout << " " << token.value << " ---->("
+                 << tokenTypeToString(token.type) << ") line: "
+                 << token.line << ", col: " << token.col << endl;
+        }
+
+        cout << "---TOKENS---" << endl;
+        for (const auto &token : tokens)
+        {
+            // It's good practice to check tokenTypeToString can handle all TokenType enum values
+            cout << " " << token.value << " ---->("
+                 << tokenTypeToString(token.type) << ") line: "
+                 << token.line << ", col: " << token.col << endl;
+        }
+
+        cout << "\n---DEFINED MACROS---" << endl;
+        if (definedMacros.empty())
+        {
+            cout << "(No macros defined or parsed)" << endl;
+        }
+        for (const auto &macro : definedMacros)
+        {
+            if (!macro.valid)
             {
-                cout << macro.parameters[i] << (i < macro.parameters.size() - 1 ? ", " : "");
+                cout << "Invalid Macro (skipped): " << macro.name << " (defined on line " << macro.line << ")" << endl;
+                continue;
             }
-            cout << ")";
+            cout << "Macro: " << macro.name;
+            if (macro.isFunctionLike)
+            {
+                cout << "(";
+                for (size_t i = 0; i < macro.parameters.size(); ++i)
+                {
+                    cout << macro.parameters[i] << (i < macro.parameters.size() - 1 ? ", " : "");
+                }
+                cout << ")";
+            }
+            cout << " -> \"" << macro.body << "\" (Line: " << macro.line << ")" << endl;
         }
-        cout << " -> \"" << macro.body << "\" (Line: " << macro.line << ")" << endl;
-    }
-    // === Step 3: Parse tokens into AST ===
-    Parser parser(tokens);
-    shared_ptr<ProgramNode> ast_root = parser.parse(); // parser.parse() should not return nullptr based on its impl
+        // === Step 3: Parse tokens into AST ===
+        Parser parser(tokens);
+        shared_ptr<ProgramNode> ast_root = parser.parse(); // parser.parse() should not return nullptr based on its impl
 
-    cout << "---AST---" << endl;
-    // ast_root itself will be non-null.
-    // We print it regardless; if parsing failed internally, ProgramNode might be empty
-    // and parser would have printed errors to cerr.
-    printAST(ast_root);
+        cout << "---AST---" << endl;
+        // ast_root itself will be non-null.
+        // We print it regardless; if parsing failed internally, ProgramNode might be empty
+        // and parser would have printed errors to cerr.
+        printAST(ast_root);
 
-    // === Step 4: Transpile to Python ===
-    Transpiler transpiler;
-    string python_code;
-    try
-    {
-        // MODIFY THIS: Pass definedMacros to transpiler
-        python_code = transpiler.transpile(ast_root, definedMacros);
-    }
-    catch (const std::exception &e)
-    {
-        cerr << "Transpilation Error: " << e.what() << endl;
-    }
+        // === Step 4: Transpile to Python ===
+        Transpiler transpiler;
+        string python_code;
+        try
+        {
+            // MODIFY THIS: Pass definedMacros to transpiler
+            python_code = transpiler.transpile(ast_root, definedMacros);
+        }
+        catch (const std::exception &e)
+        {
+            cerr << "Transpilation Error: " << e.what() << endl;
+        }
 
-    cout << "\n---PYTHON_CODE---" << endl;
-    cout << python_code << endl;
-    return 0;
-}
+        cout << "\n---PYTHON_CODE---" << endl;
+        cout << python_code << endl;
+        return 0;
+    }

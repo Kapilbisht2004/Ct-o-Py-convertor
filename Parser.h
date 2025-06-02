@@ -11,9 +11,11 @@ using namespace std;
 class ExpressionNode;
 class StatementNode;
 class BlockNode;
-class AssignmentNode;
+// class AssignmentNode;
 class PrintfNode; // New
 class ScanfNode;  // New
+class ArrayDeclarationNode;
+class ArraySubscriptNode;
 
 // AST Node Classes
 class ASTNode
@@ -338,25 +340,61 @@ private:
     string name;
 };
 
+// class AssignmentNode : public ExpressionNode
+// {
+// public:
+//     AssignmentNode(const string &targetIdentifierName) : target_name(targetIdentifierName)
+//     {
+//         type_name = "AssignmentNode";
+//     }
+//     const string &getTargetName() const { return target_name; }
+//     shared_ptr<ExpressionNode> getValue() const
+//     {
+//         if (!children.empty())
+//             return dynamic_pointer_cast<ExpressionNode>(children[0]);
+//         return nullptr;
+//     }
+
+// private:
+//     string target_name;
+// };
 class AssignmentNode : public ExpressionNode
 {
 public:
-    AssignmentNode(const string &targetIdentifierName) : target_name(targetIdentifierName)
+    // Child 0: L-Value (target of assignment, e.g., IdentifierNode, ArraySubscriptNode)
+    // Child 1: R-Value (value being assigned)
+    AssignmentNode(shared_ptr<ExpressionNode> lval, shared_ptr<ExpressionNode> rval)
     {
         type_name = "AssignmentNode";
+        if (lval)
+            addChild(lval); // L-Value is child 0
+        if (rval)
+            addChild(rval); // R-Value is child 1
     }
-    const string &getTargetName() const { return target_name; }
-    shared_ptr<ExpressionNode> getValue() const
+
+    shared_ptr<ExpressionNode> getLValue() const
     {
-        if (!children.empty())
+        if (children.size() > 0)
+        {
             return dynamic_pointer_cast<ExpressionNode>(children[0]);
+        }
         return nullptr;
     }
 
-private:
-    string target_name;
+    shared_ptr<ExpressionNode> getRValue() const
+    {
+        if (children.size() > 1)
+        {
+            return dynamic_pointer_cast<ExpressionNode>(children[1]);
+        }
+        return nullptr;
+    }
+    // REMOVE old constructor and members:
+    // AssignmentNode(const string &targetIdentifierName) : target_name(targetIdentifierName) ...
+    // const string &getTargetName() const { return target_name; }
+    // private:
+    // string target_name;
 };
-
 class AssignmentStatementNode : public StatementNode
 {
 public:
@@ -431,6 +469,64 @@ public:
 
 private:
     bool value;
+};
+
+class ArrayDeclarationNode : public VariableDeclarationNode
+{ // Or public DeclarationNode
+public:
+    // Constructor: base type, name, and size expression
+    ArrayDeclarationNode(const string &varName, const string &varType, shared_ptr<ExpressionNode> sizeExpr)
+        : VariableDeclarationNode(varName, varType), size_expr(sizeExpr)
+    {
+        type_name = "ArrayDeclarationNode";
+        // Optionally, add size_expr to children as well if your traversal relies on it
+        // if (size_expr) addChild(size_expr); // Not strictly necessary if you have a getter
+    }
+
+    shared_ptr<ExpressionNode> getSizeExpression() const
+    {
+        return size_expr;
+    }
+    // If you plan to support C-style initializers like int arr[3] = {1,2,3};
+    // you'd add members and methods to store/access these initializer expressions.
+    // For now, we'll skip direct initializers in the declaration for simplicity.
+
+private:
+    shared_ptr<ExpressionNode> size_expr;
+    // vector<shared_ptr<ExpressionNode>> initializers; // For later
+};
+
+class ArraySubscriptNode : public ExpressionNode
+{
+public:
+    // Child 0: array expression (e.g., identifier)
+    // Child 1: index expression
+    ArraySubscriptNode(shared_ptr<ExpressionNode> arrExpr, shared_ptr<ExpressionNode> idxExpr)
+    {
+        type_name = "ArraySubscriptNode";
+        if (arrExpr)
+            addChild(arrExpr); // Store array expr as first child
+        if (idxExpr)
+            addChild(idxExpr); // Store index expr as second child
+    }
+
+    shared_ptr<ExpressionNode> getArrayExpression() const
+    {
+        if (children.size() > 0)
+        {
+            return dynamic_pointer_cast<ExpressionNode>(children[0]);
+        }
+        return nullptr;
+    }
+
+    shared_ptr<ExpressionNode> getIndexExpression() const
+    {
+        if (children.size() > 1)
+        {
+            return dynamic_pointer_cast<ExpressionNode>(children[1]);
+        }
+        return nullptr;
+    }
 };
 
 // Parser class

@@ -119,6 +119,50 @@ shared_ptr<ProgramNode> Parser::parseProgram()
     return programNode;
 }
 
+// shared_ptr<StatementNode> Parser::parseStatement()
+// {
+//     if (match(TokenType::Keyword, "if"))
+//         return parseIf();
+//     if (match(TokenType::Keyword, "while"))
+//         return parseWhile();
+//     if (match(TokenType::Keyword, "for"))
+//         return parseFor();
+//     if (match(TokenType::Keyword, "return"))
+//         return parseReturn();
+//     if (match(TokenType::Keyword, "break"))
+//         return parseBreak();
+//     if (match(TokenType::Keyword, "continue"))
+//         return parseContinue();
+//     if (match(TokenType::Symbol, "{"))
+//         return parseBlock();
+
+//     // Handle printf and scanf (assuming they are lexed as Identifiers)
+//     if (check(TokenType::Identifier, "printf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
+//     {
+//         return parsePrintfStatement();
+//     }
+//     if (check(TokenType::Identifier, "scanf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
+//     {
+//         return parseScanfStatement();
+//     }
+
+//     // Check for type keywords for declarations
+//     // Ensure "char" and "bool" are included.
+//     if (check(TokenType::Keyword, "int") || check(TokenType::Keyword, "float") ||
+//         check(TokenType::Keyword, "char") || check(TokenType::Keyword, "bool") ||
+//         check(TokenType::Keyword, "string") || check(TokenType::Keyword, "void"))
+//     {
+//         return parseDeclaration();
+//     }
+
+//     // Check for assignment statement
+//     if (check(TokenType::Identifier) && peek(1).type == TokenType::Operator && peek(1).value == "=")
+//     {
+//         return parseAssignmentStatement();
+//     }
+
+//     return parseExpressionStatement();
+// }
 shared_ptr<StatementNode> Parser::parseStatement()
 {
     if (match(TokenType::Keyword, "if"))
@@ -136,7 +180,6 @@ shared_ptr<StatementNode> Parser::parseStatement()
     if (match(TokenType::Symbol, "{"))
         return parseBlock();
 
-    // Handle printf and scanf (assuming they are lexed as Identifiers)
     if (check(TokenType::Identifier, "printf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
     {
         return parsePrintfStatement();
@@ -146,8 +189,6 @@ shared_ptr<StatementNode> Parser::parseStatement()
         return parseScanfStatement();
     }
 
-    // Check for type keywords for declarations
-    // Ensure "char" and "bool" are included.
     if (check(TokenType::Keyword, "int") || check(TokenType::Keyword, "float") ||
         check(TokenType::Keyword, "char") || check(TokenType::Keyword, "bool") ||
         check(TokenType::Keyword, "string") || check(TokenType::Keyword, "void"))
@@ -155,12 +196,15 @@ shared_ptr<StatementNode> Parser::parseStatement()
         return parseDeclaration();
     }
 
-    // Check for assignment statement
-    if (check(TokenType::Identifier) && peek(1).type == TokenType::Operator && peek(1).value == "=")
-    {
-        return parseAssignmentStatement();
-    }
+    // --- REMOVE this specific check for assignment statements ---
+    // Assignments (like arr[i] = val; or x = val;) will now be parsed as
+    // ExpressionStatements containing an AssignmentNode (which is an ExpressionNode).
+    // The old check was:
+    // if (check(TokenType::Identifier) && peek(1).type == TokenType::Operator && peek(1).value == "=") {
+    //     return parseAssignmentStatement(); // This function will be removed
+    // }
 
+    // This call will now handle expression statements, including those that are assignments.
     return parseExpressionStatement();
 }
 
@@ -227,8 +271,10 @@ shared_ptr<AssignmentStatementNode> Parser::parseAssignmentStatement()
     consume(TokenType::Operator, "=", "Expected '=' after identifier in assignment statement.");
     auto value = parseExpression();
     consume(TokenType::Symbol, ";", "Expected ';' after assignment statement.");
-    auto assignNode = make_shared<AssignmentNode>(identifierName);
-    assignNode->addChild(value);
+    // auto assignNode = make_shared<AssignmentNode>(identifierName);
+    // assignNode->addChild(value);
+    auto targetLValue = make_shared<IdentifierNode>(identifierName);    // Create an IdentifierNode for the left-hand side
+    auto assignNode = make_shared<AssignmentNode>(targetLValue, value); // Use the (ExpressionNode, ExpressionNode) constructor
     return make_shared<AssignmentStatementNode>(assignNode);
 }
 
@@ -342,16 +388,64 @@ shared_ptr<ContinueNode> Parser::parseContinue()
     return make_shared<ContinueNode>();
 }
 
+// shared_ptr<StatementNode> Parser::parseDeclaration()
+// {
+//     string typeStr = advance().value;
+//     string identifierStr = consume(TokenType::Identifier, "Expected identifier after type in declaration.").value;
+//     if (check(TokenType::Symbol, "("))
+//     {
+//         return parseFunctionDeclaration(typeStr, identifierStr);
+//     }
+//     else
+//     {
+//         return parseVariableDeclaration(typeStr, identifierStr);
+//     }
+// }
 shared_ptr<StatementNode> Parser::parseDeclaration()
 {
-    string typeStr = advance().value;
+    string typeStr = advance().value; // e.g., "int"
     string identifierStr = consume(TokenType::Identifier, "Expected identifier after type in declaration.").value;
-    if (check(TokenType::Symbol, "("))
-    {
+
+    if (check(TokenType::Symbol, "["))
+    {                                      // Check for array declaration
+        advance();                         // Consume '['
+        auto sizeExpr = parseExpression(); // Parse the size (e.g., 10)
+        consume(TokenType::Symbol, "]", "Expected ']' after array size in declaration.");
+
+        // TODO: Add logic for multi-dimensional arrays here if desired (loop for more '[size]')
+        // For now, single dimension
+
+        auto arrayDeclNode = make_shared<ArrayDeclarationNode>(identifierStr, typeStr, sizeExpr);
+
+        // Optional: Handle C-style initializers e.g. int arr[3] = {1, 2, 3};
+        // This is a more complex parsing step. For now, we assume no explicit initializer list here.
+        // If an '=' is found, you might parse an ArrayInitializerListNode.
+        if (match(TokenType::Operator, "="))
+        {
+            // For now, we'll just log and consume until semicolon if initializers aren't supported.
+            cerr << "Parser Warning (Line " << previous().line << "): Array initializer found for '"
+                 << identifierStr << "' but full parsing for initializers is not yet implemented. Skipping initializer." << endl;
+            while (!isAtEnd() && !check(TokenType::Symbol, ";"))
+            {
+                advance();
+            }
+            // Alternatively, attempt to parse it as a generic expression (might not be what you want)
+            // or throw an error:
+            // throw runtime_error("Array initializers e.g. '{1,2,3}' are not yet supported in declarations.");
+        }
+
+        consume(TokenType::Symbol, ";", "Expected ';' after array declaration.");
+        return arrayDeclNode;
+    }
+    else if (check(TokenType::Symbol, "("))
+    { // Existing function declaration check
         return parseFunctionDeclaration(typeStr, identifierStr);
     }
     else
-    {
+    { // Existing scalar variable declaration
+        // Reuse the logic from parseVariableDeclaration, but pass typeStr and identifierStr
+        // or inline the relevant parts.
+        // Assuming parseVariableDeclaration can take these as hints or arguments now:
         return parseVariableDeclaration(typeStr, identifierStr);
     }
 }
@@ -427,25 +521,59 @@ shared_ptr<ExpressionNode> Parser::parseExpression()
     return parseAssignmentExpression();
 }
 
+// shared_ptr<ExpressionNode> Parser::parseAssignmentExpression()
+// {
+//     auto left = parseLogicalOr();
+//     if (match(TokenType::Operator, "="))
+//     {
+//         Token assignOp = previous();
+//         auto value = parseAssignmentExpression();
+
+//         if (auto identNode = dynamic_pointer_cast<IdentifierNode>(left))
+//         {
+//             auto assignNode = make_shared<AssignmentNode>(identNode->getName());
+//             assignNode->addChild(value);
+//             return assignNode;
+//         }
+//         // TODO: Handle other L-values like array access obj.member = value
+//         throw runtime_error("Invalid assignment target. Expected identifier, got " + left->type_name +
+//                             " (token: " + assignOp.toString() + ")");
+//     }
+//     return left;
+// }
 shared_ptr<ExpressionNode> Parser::parseAssignmentExpression()
 {
-    auto left = parseLogicalOr();
+    auto left_expr = parseLogicalOr(); // This can parse identifiers, array_subscripts, etc.
+
     if (match(TokenType::Operator, "="))
     {
-        Token assignOp = previous();
-        auto value = parseAssignmentExpression();
+        Token assign_op_token = previous();            // The '=' token itself
+        auto right_expr = parseAssignmentExpression(); // Right-associativity for assignment
 
-        if (auto identNode = dynamic_pointer_cast<IdentifierNode>(left))
+        // Check if left_expr is a valid L-value (can be assigned to)
+        // For now, we'll accept IdentifierNode and ArraySubscriptNode
+        if (dynamic_pointer_cast<IdentifierNode>(left_expr) ||
+            dynamic_pointer_cast<ArraySubscriptNode>(left_expr)
+            /* TODO: Add other valid L-value types here, e.g., MemberAccessNode for obj.field, UnaryExpressionNode for *ptr */
+        )
         {
-            auto assignNode = make_shared<AssignmentNode>(identNode->getName());
-            assignNode->addChild(value);
-            return assignNode;
+            // Create the new AssignmentNode that takes two ExpressionNode children
+            return make_shared<AssignmentNode>(left_expr, right_expr);
         }
-        // TODO: Handle other L-values like array access obj.member = value
-        throw runtime_error("Invalid assignment target. Expected identifier, got " + left->type_name +
-                            " (token: " + assignOp.toString() + ")");
+        else
+        {
+            // If left_expr is something like "5 = x" or "(a+b) = x", it's an error
+            string left_type_name = "null";
+            if (left_expr)
+            {
+                left_type_name = left_expr->type_name.empty() ? typeid(*left_expr).name() : left_expr->type_name;
+            }
+            throw runtime_error("Invalid assignment target. Left-hand side of '=' must be an identifier or assignable expression. Got: " +
+                                left_type_name +
+                                " near token: " + assign_op_token.toString());
+        }
     }
-    return left;
+    return left_expr; // If no '=', it's just the expression parsed by parseLogicalOr()
 }
 
 shared_ptr<ExpressionNode> Parser::parseLogicalOr()
@@ -499,15 +627,56 @@ shared_ptr<ExpressionNode> Parser::parseUnary()
     return parseCall();
 }
 
+// shared_ptr<ExpressionNode> Parser::parseCall()
+// {
+//     auto expr = parsePrimary();
+//     while (true)
+//     {
+//         if (match(TokenType::Symbol, "("))
+//         {
+//             // Check if 'expr' is an IdentifierNode before treating as simple function call
+//             // For more advanced scenarios (e.g. (get_func())(arg) ), 'expr' could be other ExpressionNode types.
+//             if (auto identNode = dynamic_pointer_cast<IdentifierNode>(expr))
+//             {
+//                 auto callNode = make_shared<FunctionCallNode>(identNode->getName());
+//                 if (!check(TokenType::Symbol, ")"))
+//                 {
+//                     do
+//                     {
+//                         callNode->addChild(parseExpression());
+//                     } while (match(TokenType::Symbol, ","));
+//                 }
+//                 consume(TokenType::Symbol, ")", "Expected ')' after function call arguments.");
+//                 expr = callNode;
+//             }
+//             else
+//             {
+//                 // If 'expr' is not a simple identifier, it might be an expression that evaluates to a function.
+//                 // For now, strict: must be identifier before '('.
+//                 // A more general FunctionCallNode might store an ExpressionNode 'callee' instead of 'string name'.
+//                 throw runtime_error("Expression before '(' is not a simple callable identifier for function call.");
+//             }
+//         }
+//         // TODO: Add other postfix operators like array subscript [] or member access .
+//         // else if (match(TokenType::Symbol, "[")) { ... expr = ...; continue; }
+//         // else if (match(TokenType::Operator, ".")) { ... expr = ...; continue; }
+//         else
+//         {
+//             break;
+//         }
+//     }
+//     return expr;
+// }
 shared_ptr<ExpressionNode> Parser::parseCall()
 {
-    auto expr = parsePrimary();
+    auto expr = parsePrimary(); // Parses identifier, literal, (grouped_expr), etc.
+
     while (true)
     {
         if (match(TokenType::Symbol, "("))
-        {
-            // Check if 'expr' is an IdentifierNode before treating as simple function call
-            // For more advanced scenarios (e.g. (get_func())(arg) ), 'expr' could be other ExpressionNode types.
+        { // Function call
+            // ... (existing function call logic that sets expr = callNode)
+            // ...
             if (auto identNode = dynamic_pointer_cast<IdentifierNode>(expr))
             {
                 auto callNode = make_shared<FunctionCallNode>(identNode->getName());
@@ -519,27 +688,27 @@ shared_ptr<ExpressionNode> Parser::parseCall()
                     } while (match(TokenType::Symbol, ","));
                 }
                 consume(TokenType::Symbol, ")", "Expected ')' after function call arguments.");
-                expr = callNode;
+                expr = callNode; // Update expr to be the call node
             }
             else
             {
-                // If 'expr' is not a simple identifier, it might be an expression that evaluates to a function.
-                // For now, strict: must be identifier before '('.
-                // A more general FunctionCallNode might store an ExpressionNode 'callee' instead of 'string name'.
                 throw runtime_error("Expression before '(' is not a simple callable identifier for function call.");
             }
         }
-        // TODO: Add other postfix operators like array subscript [] or member access .
-        // else if (match(TokenType::Symbol, "[")) { ... expr = ...; continue; }
-        // else if (match(TokenType::Operator, ".")) { ... expr = ...; continue; }
+        else if (match(TokenType::Symbol, "["))
+        { // NEW: Array Subscript
+            auto indexExpr = parseExpression();
+            consume(TokenType::Symbol, "]", "Expected ']' after array index.");
+            expr = make_shared<ArraySubscriptNode>(expr, indexExpr); // Update expr to be the subscript node
+            // For multi-dimensional: loop here for more '[]'
+        }
         else
         {
-            break;
+            break; // No more postfix operators
         }
     }
     return expr;
 }
-
 // MODIFIED parsePrimary METHOD:
 shared_ptr<ExpressionNode> Parser::parsePrimary()
 {
