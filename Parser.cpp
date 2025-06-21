@@ -118,7 +118,7 @@ shared_ptr<ProgramNode> Parser::parseProgram()
     }
     return programNode;
 }
- 
+
 shared_ptr<StatementNode> Parser::parseStatement()
 {
     if (match(TokenType::Keyword, "if"))
@@ -151,7 +151,6 @@ shared_ptr<StatementNode> Parser::parseStatement()
     {
         return parseDeclaration();
     }
- 
 
     // This call will now handle expression statements, including those that are assignments.
     return parseExpressionStatement();
@@ -429,7 +428,6 @@ shared_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration(
     consume(TokenType::Symbol, ";", "Expected ';' after variable declaration.");
     return varDeclNode;
 }
- 
 
 // REPLACE the old parseFunctionDeclaration with this one:
 shared_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration(
@@ -487,7 +485,7 @@ shared_ptr<ExpressionNode> Parser::parseExpression()
 {
     return parseAssignmentExpression();
 }
- 
+
 shared_ptr<ExpressionNode> Parser::parseAssignmentExpression()
 {
     auto left_expr = parseLogicalOr(); // This can parse identifiers, array_subscripts, etc.
@@ -563,8 +561,10 @@ shared_ptr<ExpressionNode> Parser::parseUnary()
 {
     if (check(TokenType::Operator, "!") ||
         check(TokenType::Operator, "-") ||
-        check(TokenType::Operator, "&"))
-    { // Added '&' for address-of
+        check(TokenType::Operator, "&") ||
+        check(TokenType::Operator, "++") || // <-- ADDED THIS
+        check(TokenType::Operator, "--"))   // <-- ADDED THIS
+    {                                       // Added '&' for address-of
         string op = advance().value;
         auto operand = parseUnary(); // Right-associative for unary operators
         auto unaryNode = make_shared<UnaryExpressionNode>(op);
@@ -573,7 +573,7 @@ shared_ptr<ExpressionNode> Parser::parseUnary()
     }
     return parseCall();
 }
- 
+
 shared_ptr<ExpressionNode> Parser::parseCall()
 {
     auto expr = parsePrimary(); // Parses identifier, literal, (grouped_expr), etc.
@@ -608,6 +608,16 @@ shared_ptr<ExpressionNode> Parser::parseCall()
             consume(TokenType::Symbol, "]", "Expected ']' after array index.");
             expr = make_shared<ArraySubscriptNode>(expr, indexExpr); // Update expr to be the subscript node
             // For multi-dimensional: loop here for more '[]'
+        }
+        else if (match(TokenType::Operator, "++") || match(TokenType::Operator, "--"))
+        {
+            // This is a postfix increment/decrement operator
+            string op = previous().value; // Get the "++" or "--"
+            // The operand is the expression we parsed *before* the operator
+            auto postfix_unary_node = make_shared<UnaryExpressionNode>(op);
+            postfix_unary_node->addChild(expr);
+            // The whole thing (e.g., "i++") becomes the new expression
+            expr = postfix_unary_node;
         }
         else
         {

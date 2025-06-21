@@ -909,14 +909,48 @@ string Transpiler::transpileBinaryExpression(shared_ptr<BinaryExpressionNode> ex
         op = "or";
     return "(" + left + " " + op + " " + right + ")";
 }
+// string Transpiler::transpileUnaryExpression(shared_ptr<UnaryExpressionNode> expr)
+// { /* ... same (with ! and & mapping) ... */
+//     string op = expr->getOperator();
+//     string operand = transpileExpression(expr->getOperand());
+//     if (op == "!")
+//         op = "not ";
+//     if (op == "&")
+//         return operand;
+//     return op + operand;
+// }
+// --- REPLACE THE ENTIRE FUNCTION WITH THIS ---
 string Transpiler::transpileUnaryExpression(shared_ptr<UnaryExpressionNode> expr)
-{ /* ... same (with ! and & mapping) ... */
+{
     string op = expr->getOperator();
     string operand = transpileExpression(expr->getOperand());
+
+    // --- NEW LOGIC FOR ++ and -- ---
+    if (op == "++")
+    {
+        // Convert to Python's in-place addition statement
+        return operand + " += 1";
+    }
+    if (op == "--")
+    {
+        // Convert to Python's in-place subtraction statement
+        return operand + " -= 1";
+    }
+    // --- END OF NEW LOGIC ---
+
+    // Existing logic for other operators
     if (op == "!")
-        op = "not ";
+    {
+        // Using "not" and wrapping operand in parens is good practice
+        return "not (" + operand + ")";
+    }
     if (op == "&")
+    {
+        // As used for scanf, this simplification passes the variable name through
         return operand;
+    }
+
+    // For unary minus (-) and other potential future operators
     return op + operand;
 }
 
