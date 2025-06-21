@@ -188,14 +188,6 @@ string Transpiler::transpileMacroBodyToPythonExpression(const string &c_macro_bo
     return transpileExpression(bodyExpr);
 }
 
-// // Entry point
-// string Transpiler::transpile(shared_ptr<ProgramNode> program)
-// {
-//     if (!program)
-//         return "Program AST is null\n";
-//     return transpileProgram(program);
-// }
-
 // MODIFY Transpiler::transpile
 string Transpiler::transpile(shared_ptr<ProgramNode> program, const vector<MacroDefinition> &macros)
 {
@@ -206,17 +198,6 @@ string Transpiler::transpile(shared_ptr<ProgramNode> program, const vector<Macro
     return transpileProgram(program, macros); // Pass macros along
 }
 
-// // Transpile a ProgramNode
-// string Transpiler::transpileProgram(shared_ptr<ProgramNode> program)
-// {
-//     string code;
-//     for (const auto &stmt : program->getStatements())
-//     {
-//         // Top-level statements are at indent level 0.
-//         code += transpileStatement(stmt, 0);
-//     }
-//     return code;
-// }
 string Transpiler::transpileProgram(shared_ptr<ProgramNode> program, const vector<MacroDefinition> &macros)
 {
     string py_code;
@@ -268,82 +249,6 @@ string Transpiler::transpileProgram(shared_ptr<ProgramNode> program, const vecto
 
     return py_code;
 }
-
-// Dispatch to the correct statement transpiler.
-// `base_indent_level` is the indentation level for the statement itself (if it's a leaf)
-// or for the header of a control structure. Bodies will be `base_indent_level + 1`.
-// string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_indent_level)
-// {
-//     if (!stmt)
-//         return "";
-//     string statement_code;
-
-//     if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(stmt))
-//     {
-//         statement_code = transpileAssignmentStatement(assignStmt); // Returns "target = val\n" (unindented)
-//     }
-//     else if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(stmt))
-//     {
-//         statement_code = transpileVariableDeclaration(varDecl); // Returns "name = init\n" or "" (unindented)
-//     }
-//     else if (auto ifStmt = dynamic_pointer_cast<IfNode>(stmt))
-//     {
-//         // IfNode transpiler handles its own indentation based on base_indent_level
-//         return transpileIfStatement(ifStmt, base_indent_level);
-//     }
-//     else if (auto whileStmt = dynamic_pointer_cast<WhileNode>(stmt))
-//     {
-//         return transpileWhileStatement(whileStmt, base_indent_level);
-//     }
-//     else if (auto forStmt = dynamic_pointer_cast<ForNode>(stmt))
-//     {
-//         return transpileForStatement(forStmt, base_indent_level);
-//     }
-//     else if (auto exprStmt = dynamic_pointer_cast<ExpressionStatementNode>(stmt))
-//     {
-//         statement_code = transpileExpressionStatement(exprStmt); // Returns "expr\n" (unindented)
-//     }
-//     else if (auto returnStmt = dynamic_pointer_cast<ReturnNode>(stmt))
-//     {
-//         statement_code = transpileReturnStatement(returnStmt); // Returns "return ...\n" (unindented)
-//     }
-//     else if (auto blockStmt = dynamic_pointer_cast<BlockNode>(stmt))
-//     {
-//         // transpileBlock takes the indent level for ITS CONTENTS.
-//         return transpileBlock(blockStmt, base_indent_level); // Standalone block's content is 1 level deeper
-//     }
-//     else if (auto funcDecl = dynamic_pointer_cast<FunctionDeclarationNode>(stmt))
-//     {
-//         return transpileFunctionDeclaration(funcDecl); // Handles its own indent for header and body
-//     }
-//     else if (auto printfStmt = dynamic_pointer_cast<PrintfNode>(stmt))
-//     {
-//         statement_code = transpilePrintfStatement(printfStmt); // "print(f\"...\")\n"
-//     }
-//     else if (auto scanfStmt = dynamic_pointer_cast<ScanfNode>(stmt))
-//     {
-//         statement_code = transpileScanfStatement(scanfStmt); // multiple lines, unindented
-//     }
-//     else if (auto breakStmt = dynamic_pointer_cast<BreakNode>(stmt))
-//     {
-//         statement_code = transpileBreakStatement(breakStmt); // "break\n"
-//     }
-//     else if (auto continueStmt = dynamic_pointer_cast<ContinueNode>(stmt))
-//     {
-//         statement_code = transpileContinueStatement(continueStmt); // "continue\n"
-//     }
-//     else
-//     {
-//         // ... error logging ...
-//         return indent("# UNHANDLED_STATEMENT_TYPE: " + (stmt ? stmt->type_name : "null") + "\n", base_indent_level);
-//     }
-
-//     // If we got here, it was a "leaf" statement (not if/while/for/def/block which return fully indented structures)
-//     // So we indent the raw `statement_code`.
-//     if (statement_code.empty())
-//         return ""; // e.g. from uninitialized var decl
-//     return indent(statement_code, base_indent_level);
-// }
 
 string Transpiler::transpilePrintfStatement(shared_ptr<PrintfNode> stmt)
 { /* ... same, returns "print(f\"...\")\n" */
@@ -528,59 +433,6 @@ string Transpiler::transpileScanfStatement(shared_ptr<ScanfNode> stmt)
     }
     return result_code;
 }
-// string Transpiler::transpileScanfStatement(shared_ptr<ScanfNode> stmt)
-// { /* ... same, returns potentially multiple lines, unindented */
-//     auto formatStringNode = dynamic_pointer_cast<StringLiteralNode>(stmt->getFormatStringExpression());
-//     if (!formatStringNode)
-//         return "# Error: scanf format string is not a string literal\n";
-//     string formatStr = formatStringNode->getValue();
-//     string result_code = "";
-//     vector<string> targetVars;
-//     for (const auto &argExpr : stmt->getArguments())
-//     {
-//         if (auto unary = dynamic_pointer_cast<UnaryExpressionNode>(argExpr))
-//         {
-//             if (unary->getOperator() == "&")
-//             {
-//                 if (auto ident = dynamic_pointer_cast<IdentifierNode>(unary->getOperand()))
-//                 {
-//                     targetVars.push_back(ident->getName());
-//                     continue;
-//                 }
-//             }
-//         }
-//         targetVars.push_back("#INVALID_SCANF_TARGET");
-//     }
-//     stringstream fs(formatStr);
-//     string spec_token;
-//     size_t var_idx = 0;
-//     bool multiple_inputs_on_line = formatStr.find(' ') != string::npos && targetVars.size() > 1;
-//     if (multiple_inputs_on_line)
-//         result_code += "_temp_inputs = input(\"# Enter values for: " + formatStr + "\\n\").split()\n";
-//     while (fs >> spec_token && var_idx < targetVars.size())
-//     {
-//         string current_target_var = targetVars[var_idx];
-//         string rhs = "";
-//         if (multiple_inputs_on_line)
-//             rhs = "_temp_inputs[" + to_string(var_idx) + "]";
-//         else
-//             rhs = "input(\"# Enter value for " + spec_token + " (" + current_target_var + "): \\n\")";
-//         if (spec_token == "%d")
-//             result_code += current_target_var + " = int(" + rhs + ")\n";
-//         else if (spec_token == "%f")
-//             result_code += current_target_var + " = float(" + rhs + ")\n";
-//         else if (spec_token == "%s")
-//             result_code += current_target_var + " = " + rhs + "\n";
-//         else if (spec_token == "%c")
-//             result_code += current_target_var + " = (" + rhs + ")[0] if " + rhs + " else ''\n";
-//         else
-//             result_code += current_target_var + " = " + rhs + " # Unhandled scanf specifier " + spec_token + "\n";
-//         var_idx++;
-//     }
-//     if (var_idx < targetVars.size())
-//         result_code += "# Warning: Not all scanf target vars used.\n";
-//     return result_code;
-// }
 string Transpiler::transpileReturnStatement(shared_ptr<ReturnNode> stmt)
 { /* ... same ... */
     if (!stmt->getReturnValue())
@@ -635,35 +487,75 @@ string Transpiler::transpileBlock(shared_ptr<BlockNode> block, int content_inden
     return collected_code_for_block_content;
 }
 
+// string Transpiler::transpileIfStatement(shared_ptr<IfNode> stmt, int base_indent_level)
+// {
+//     string condition = transpileExpression(stmt->getCondition());
+//     string if_header = indent("if " + condition + ":\n", base_indent_level);
+
+//     string thenBranch_code = transpileStatement(stmt->getThenBranch(), base_indent_level + 1);
+
+//     string code = if_header + thenBranch_code;
+
+//     if (stmt->getElseBranch())
+//     {
+//         if (auto elseIf = dynamic_pointer_cast<IfNode>(stmt->getElseBranch()))
+//         {
+//             // elif header should be at the same level as the 'if'
+//             code += transpileIfStatement(elseIf, base_indent_level); // This prepends "el" internally later
+//             // Temporarily prepend "el"
+//             if (code.rfind("if ", 0) == 0 || code.find("\nif ") != string::npos)
+//             {                                   // Rough check if transpileIf already produced an "if "
+//                 size_t pos = code.rfind("if "); // find last "if "
+//                 if (pos != string::npos)
+//                     code.replace(pos, 2, "elif "); // Replace "if " with "elif "
+//             }
+//         }
+//         else
+//         {
+//             code += indent("else:\n", base_indent_level);
+//             code += transpileStatement(stmt->getElseBranch(), base_indent_level + 1);
+//         }
+//     }
+//     return code;
+// }
+
+// PASTE THIS NEW CODE IN ITS PLACE
 string Transpiler::transpileIfStatement(shared_ptr<IfNode> stmt, int base_indent_level)
 {
+    // 1. Transpile the initial 'if' part
     string condition = transpileExpression(stmt->getCondition());
-    string if_header = indent("if " + condition + ":\n", base_indent_level);
+    string code = indent("if " + condition + ":\n", base_indent_level);
+    code += transpileStatement(stmt->getThenBranch(), base_indent_level + 1);
 
-    string thenBranch_code = transpileStatement(stmt->getThenBranch(), base_indent_level + 1);
+    // 2. Start processing the chain of 'else' branches
+    shared_ptr<StatementNode> current_else_branch = stmt->getElseBranch();
 
-    string code = if_header + thenBranch_code;
-
-    if (stmt->getElseBranch())
+    // Loop through the chain of 'else if's
+    while (current_else_branch)
     {
-        if (auto elseIf = dynamic_pointer_cast<IfNode>(stmt->getElseBranch()))
+        // Try to cast the current else branch to an IfNode.
+        // If successful, it's an 'else if' construct.
+        if (auto else_if_node = dynamic_pointer_cast<IfNode>(current_else_branch))
         {
-            // elif header should be at the same level as the 'if'
-            code += transpileIfStatement(elseIf, base_indent_level); // This prepends "el" internally later
-            // Temporarily prepend "el"
-            if (code.rfind("if ", 0) == 0 || code.find("\nif ") != string::npos)
-            {                                   // Rough check if transpileIf already produced an "if "
-                size_t pos = code.rfind("if "); // find last "if "
-                if (pos != string::npos)
-                    code.replace(pos, 2, "elif "); // Replace "if " with "elif "
-            }
+            // It's an 'else if', so generate an 'elif'.
+            string elif_condition = transpileExpression(else_if_node->getCondition());
+            code += indent("elif " + elif_condition + ":\n", base_indent_level);
+            code += transpileStatement(else_if_node->getThenBranch(), base_indent_level + 1);
+
+            // Move to the next link in the chain for the next loop iteration.
+            current_else_branch = else_if_node->getElseBranch();
         }
         else
         {
+            // It's a final 'else' block (not another 'if').
             code += indent("else:\n", base_indent_level);
-            code += transpileStatement(stmt->getElseBranch(), base_indent_level + 1);
+            code += transpileStatement(current_else_branch, base_indent_level + 1);
+
+            // Break the loop since we've handled the final 'else'.
+            current_else_branch = nullptr;
         }
     }
+
     return code;
 }
 
@@ -884,161 +776,8 @@ string Transpiler::transpileForStatement(shared_ptr<ForNode> forNode, int curren
     }
     return code;
 }
-// string Transpiler::transpileForStatement(shared_ptr<ForNode> forNode, int current_indent_level)
-// {
-//     string code;
-
-//     // Extract initializer
-//     string loopVar;
-//     string startValue = "0";
-//     auto initializer = forNode->getInitializer();
-
-//     if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(initializer))
-//     {
-//         loopVar = varDecl->getName();
-//         if (auto initExpr = varDecl->getInitializer())
-//         {
-//             startValue = transpileExpression(initExpr);
-//         }
-//     }
-//     else if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(initializer))
-//     {
-//         auto assignExpr = assignStmt->getAssignment();
-//         loopVar = assignExpr->getTargetName();
-//         startValue = transpileExpression(assignExpr->getValue());
-//     }
-//     else
-//     {
-//         return code + indent("# Unsupported for-loop initializer\n", current_indent_level);
-//     }
-
-//     // Extract condition
-//     string stopValue;
-//     bool inclusive = false;
-//     bool isLessComparison = true;
-//     auto condition = forNode->getCondition();
-
-//     if (auto binaryCond = dynamic_pointer_cast<BinaryExpressionNode>(condition))
-//     {
-//         string op = binaryCond->getOperator();
-//         auto left = binaryCond->getLeft();
-//         auto right = binaryCond->getRight();
-
-//         if (auto leftId = dynamic_pointer_cast<IdentifierNode>(left))
-//         {
-//             if (leftId->getName() == loopVar)
-//             {
-//                 stopValue = transpileExpression(right);
-//                 if (op == "<")
-//                     isLessComparison = true;
-//                 else if (op == "<=")
-//                 {
-//                     isLessComparison = true;
-//                     inclusive = true;
-//                 }
-//                 else if (op == ">")
-//                     isLessComparison = false;
-//                 else if (op == ">=")
-//                 {
-//                     isLessComparison = false;
-//                     inclusive = true;
-//                 }
-//                 else
-//                     return code + indent("# Unsupported for-loop condition operator\n", current_indent_level);
-//             }
-//             else
-//                 return code + indent("# Unsupported for-loop condition structure\n", current_indent_level);
-//         }
-//         else
-//             return code + indent("# Unsupported for-loop condition structure\n", current_indent_level);
-//     }
-//     else
-//         return code + indent("# Unsupported for-loop condition type\n", current_indent_level);
-
-//     // Extract increment and check if range is safe
-//     int step = 1;
-//     auto increment = forNode->getIncrement();
-//     bool safeForRange = false;
-
-//     if (auto assignInc = dynamic_pointer_cast<AssignmentNode>(increment))
-//     {
-//         if (assignInc->getTargetName() == loopVar)
-//         {
-//             if (auto binaryInc = dynamic_pointer_cast<BinaryExpressionNode>(assignInc->getValue()))
-//             {
-//                 string op = binaryInc->getOperator();
-//                 if ((op == "+" || op == "-") && dynamic_pointer_cast<NumberNode>(binaryInc->getRight()))
-//                 {
-//                     int val = stoi(dynamic_pointer_cast<NumberNode>(binaryInc->getRight())->getValue());
-//                     step = (op == "+") ? val : -val;
-//                     safeForRange = true;
-//                 }
-//             }
-//         }
-//     }
-//     else if (auto unaryInc = dynamic_pointer_cast<UnaryExpressionNode>(increment))
-//     {
-//         if (auto operandId = dynamic_pointer_cast<IdentifierNode>(unaryInc->getOperand()))
-//         {
-//             if (operandId->getName() == loopVar)
-//             {
-//                 string op = unaryInc->getOperator();
-//                 if (op == "++")
-//                     step = 1;
-//                 else if (op == "--")
-//                     step = -1;
-//                 safeForRange = true;
-//             }
-//         }
-//     }
-
-//     // Adjust stop value for inclusive comparison
-//     if (inclusive)
-//     {
-//         if (step > 0)
-//             stopValue = "(" + stopValue + " + 1)";
-//         else
-//             stopValue = "(" + stopValue + " - 1)";
-//     }
-
-//     // Transpile using range() if safe
-//     if (safeForRange)
-//     {
-//         code += indent("for " + loopVar + " in range(" + startValue + ", " + stopValue + ", " + to_string(step) + "):\n", current_indent_level);
-//         auto body = forNode->getBody();
-//         if (body)
-//         {
-//             code += transpileStatement(body, current_indent_level + 1);
-//         }
-//         else
-//         {
-//             code += indent("pass\n", current_indent_level + 1);
-//         }
-//     }
-//     else
-//     {
-//         // fallback to while loop
-//         code += indent(loopVar + " = " + startValue + "\n", current_indent_level);
-//         code += indent("while " + transpileExpression(condition) + ":\n", current_indent_level);
-
-//         string bodyCode = "";
-//         if (auto body = forNode->getBody())
-//         {
-//             bodyCode += transpileStatement(body, current_indent_level + 1);
-//         }
-//         else
-//         {
-//             bodyCode += indent("pass\n", current_indent_level + 1);
-//         }
-
-//         // Append manual increment at end of loop body
-//         string incLine = transpileExpression(increment) + "\n";
-//         bodyCode += indent(incLine, current_indent_level + 1);
-//         code += bodyCode;
-//     }
-
-//     return code;
-// }
+// REPLACE the old transpileFunctionDeclaration with this one:
+// This should be the ONLY version in your file.
 
 string Transpiler::transpileFunctionDeclaration(shared_ptr<FunctionDeclarationNode> funcDecl)
 {
@@ -1046,19 +785,22 @@ string Transpiler::transpileFunctionDeclaration(shared_ptr<FunctionDeclarationNo
     ostringstream header;
     header << "def " << funcDecl->getName() << "(";
 
-    const auto &paramNames = funcDecl->getParamNames();
-    for (size_t i = 0; i < paramNames.size(); ++i)
+    // The corrected variable name
+    const auto params = funcDecl->getParameters();
+
+    // This loop now works because 'params' is correctly declared above
+    for (size_t i = 0; i < params.size(); ++i)
     {
         if (i > 0)
             header << ", ";
-        header << paramNames[i];
+        header << params[i].name;
     }
     header << "):\n";
 
     string code = indent(header.str(), base_indent);
 
     auto bodyNode = funcDecl->getBody();
-    if (bodyNode)
+    if (bodyNode && !bodyNode->getStatements().empty())
     {
         code += transpileStatement(bodyNode, base_indent + 1);
     }
@@ -1069,38 +811,6 @@ string Transpiler::transpileFunctionDeclaration(shared_ptr<FunctionDeclarationNo
     return code;
 }
 
-// --- Expression Transpilers (return Python expression strings, no newlines, no leading/trailing indent) ---
-// string Transpiler::transpileExpression(shared_ptr<ExpressionNode> expr)
-// {
-//     if (!expr)
-//         return "";
-//     if (auto binary = dynamic_pointer_cast<BinaryExpressionNode>(expr))
-//         return transpileBinaryExpression(binary);
-//     if (auto unary = dynamic_pointer_cast<UnaryExpressionNode>(expr))
-//         return transpileUnaryExpression(unary);
-//     if (auto ident = dynamic_pointer_cast<IdentifierNode>(expr))
-//         return transpileIdentifierNode(ident);
-//     if (auto number = dynamic_pointer_cast<NumberNode>(expr))
-//         return transpileNumberNode(number);
-//     if (auto strLiteral = dynamic_pointer_cast<StringLiteralNode>(expr))
-//         return transpileStringLiteralNode(strLiteral);
-//     if (auto charLiteral = dynamic_pointer_cast<CharLiteralNode>(expr))
-//         return transpileCharLiteralNode(charLiteral);
-//     if (auto boolLiteral = dynamic_pointer_cast<BooleanNode>(expr))
-//         return transpileBooleanNode(boolLiteral);
-//     if (auto funcCall = dynamic_pointer_cast<FunctionCallNode>(expr))
-//         return transpileFunctionCallNode(funcCall);
-//     if (auto assign = dynamic_pointer_cast<AssignmentNode>(expr))
-//         return transpileAssignmentNode(assign);
-//     cerr << "Transpiler Error: Unsupported expression type: " << (expr->type_name.empty() ? "Unknown" : expr->type_name) << endl;
-//     return "#UNSUPPORTED_EXPR_" + expr->type_name;
-// }
-// string string Transpiler::transpileAssignmentNode(shared_ptr<AssignmentNode> assign)
-// {
-//     string lvalue_py = transpileExpression(assign->getLValue()); // Transpile the L-Value ExpressionNode
-//     string rvalue_py = transpileExpression(assign->getRValue());
-//     return lvalue_py + " = " + rvalue_py;
-// }
 string Transpiler::transpileAssignmentNode(shared_ptr<AssignmentNode> assign)
 {
     string lvalue_py = transpileExpression(assign->getLValue()); // Assumes getLValue() exists
@@ -1240,197 +950,6 @@ string Transpiler::transpileArraySubscriptNode(shared_ptr<ArraySubscriptNode> ex
     return array_py_expr + "[" + index_py_expr + "]";
 }
 
-// --- Modify Transpiler::transpileStatement() ---
-// Add a case for ArrayDeclarationNode
-// string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_indent_level)
-// {
-//     if (!stmt)
-//         return "";
-//     string statement_code_to_indent; // For leaf-like statements
-
-//     // ... (existing conditions for IfNode, WhileNode, ForNode, BlockNode, FunctionDeclarationNode
-//     //      which return fully-formed, indented code blocks) ...
-//     if (auto funcDecl = dynamic_pointer_cast<FunctionDeclarationNode>(stmt))
-//     { // KEEP FIRST for complex structures
-//         return transpileFunctionDeclaration(funcDecl);
-//     }
-//     else if (auto ifStmt = dynamic_pointer_cast<IfNode>(stmt))
-//     {
-//         return transpileIfStatement(ifStmt, base_indent_level);
-//     } // ... and so on for other block-like statements
-
-//     // --- Leaf-like statements section ---
-//     else if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileAssignmentStatement(assignStmt);
-//     }
-//     // IMPORTANT: If ArrayDeclarationNode inherits VariableDeclarationNode, check ArrayDecl first!
-//     else if (auto arrayDecl = dynamic_pointer_cast<ArrayDeclarationNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileArrayDeclaration(arrayDecl); // Returns "name = [None]*N\n"
-//     }
-//     else if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(stmt))
-//     { // For scalar variables
-//         statement_code_to_indent = transpileVariableDeclaration(varDecl);
-//     }
-//     else if (auto exprStmt = dynamic_pointer_cast<ExpressionStatementNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileExpressionStatement(exprStmt);
-//     }
-//     // ... (other leaf statements: printf, scanf, return, break, continue) ...
-//     else if (auto printfStmt = dynamic_pointer_cast<PrintfNode>(stmt))
-//     { /* ... */
-//         statement_code_to_indent = transpilePrintfStatement(printfStmt);
-//     }
-//     else if (auto scanfStmt = dynamic_pointer_cast<ScanfNode>(stmt))
-//     { /* ... */
-//         statement_code_to_indent = transpileScanfStatement(scanfStmt);
-//     }
-//     else if (auto returnStmt = dynamic_pointer_cast<ReturnNode>(stmt))
-//     { /* ... */
-//         statement_code_to_indent = transpileReturnStatement(returnStmt);
-//     }
-//     else if (auto breakStmt = dynamic_pointer_cast<BreakNode>(stmt))
-//     { /* ... */
-//         statement_code_to_indent = transpileBreakStatement(breakStmt);
-//     }
-//     else if (auto continueStmt = dynamic_pointer_cast<ContinueNode>(stmt))
-//     { /* ... */
-//         statement_code_to_indent = transpileContinueStatement(continueStmt);
-//     }
-//     else if (auto blockStmt = dynamic_pointer_cast<BlockNode>(stmt))
-//     {
-//         return transpileBlock(blockStmt, base_indent_level);
-//     }
-//     else
-//     {
-//         return indent("# UNHANDLED_STATEMENT_TYPE: " + (stmt ? stmt->type_name : "null") + "\n", base_indent_level);
-//     }
-
-//     if (statement_code_to_indent.empty())
-//         return ""; // e.g. from uninitialized var decl not transpiled
-//     return indent(statement_code_to_indent, base_indent_level);
-// }
-
-// (Make sure this is the *only* active definition of transpileStatement in this file)
-// string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_indent_level)
-// {
-//     if (!stmt)
-//     {
-//         std::cerr << "Transpiler::transpileStatement: Received a NULL stmt pointer." << std::endl; // DEBUG
-//         return "";
-//     }
-
-//     // DEBUG PRINT:
-//     std::cerr << "Transpiler::transpileStatement trying to handle node type: "
-//               << (stmt->type_name.empty() ? typeid(*stmt).name() : stmt->type_name) // Use RTTI if type_name is empty
-//               << " at indent level " << base_indent_level << std::endl;
-
-//     // ---- SECTION 1: Structural/Block statements that manage their own full indentation ----
-//     if (auto funcDecl = dynamic_pointer_cast<FunctionDeclarationNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched FunctionDeclarationNode <<<" << std::endl; // DEBUG
-//         return transpileFunctionDeclaration(funcDecl);
-//     }
-//     else if (auto ifStmt = dynamic_pointer_cast<IfNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched IfNode <<<" << std::endl; // DEBUG
-//         return transpileIfStatement(ifStmt, base_indent_level);
-//     }
-//     // VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-//     // CRITICAL: CASES FOR FOR AND WHILE LOOPS
-//     // VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-//     else if (auto forStmt = dynamic_pointer_cast<ForNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched ForNode <<<" << std::endl; // DEBUG
-//         return transpileForStatement(forStmt, base_indent_level);
-//     }
-//     else if (auto whileStmt = dynamic_pointer_cast<WhileNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched WhileNode <<<" << std::endl; // DEBUG
-//         return transpileWhileStatement(whileStmt, base_indent_level);
-//     }
-//     // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-//     else if (auto blockStmt = dynamic_pointer_cast<BlockNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched BlockNode <<<" << std::endl; // DEBUG
-//         return transpileBlock(blockStmt, base_indent_level);
-//     }
-
-//     // ---- SECTION 2: Leaf-like statements ----
-//     string statement_code_to_indent;
-
-//     if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched AssignmentStatementNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileAssignmentStatement(assignStmt);
-//     }
-//     else if (auto arrayDecl = dynamic_pointer_cast<ArrayDeclarationNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched ArrayDeclarationNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileArrayDeclaration(arrayDecl);
-//     }
-//     else if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched VariableDeclarationNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileVariableDeclaration(varDecl);
-//     }
-//     else if (auto exprStmt = dynamic_pointer_cast<ExpressionStatementNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched ExpressionStatementNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileExpressionStatement(exprStmt);
-//     }
-//     else if (auto printfStmt = dynamic_pointer_cast<PrintfNode>(stmt))
-//     {                                                             // For printf(...)
-//         std::cerr << "  >>> Matched PrintfNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpilePrintfStatement(printfStmt);
-//     }
-//     else if (auto scanfStmt = dynamic_pointer_cast<ScanfNode>(stmt))
-//     {                                                            // For scanf(...)
-//         std::cerr << "  >>> Matched ScanfNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileScanfStatement(scanfStmt);
-//     }
-//     else if (auto returnStmt = dynamic_pointer_cast<ReturnNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched ReturnNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileReturnStatement(returnStmt);
-//     }
-//     else if (auto breakStmt = dynamic_pointer_cast<BreakNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched BreakNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileBreakStatement(breakStmt);
-//     }
-//     else if (auto continueStmt = dynamic_pointer_cast<ContinueNode>(stmt))
-//     {
-//         std::cerr << "  >>> Matched ContinueNode <<<" << std::endl; // DEBUG
-//         statement_code_to_indent = transpileContinueStatement(continueStmt);
-//     }
-//     // Final fallback
-//     else
-//     {
-//         string node_type_name = "null_stmt_or_empty_type_name";
-//         if (stmt && !stmt->type_name.empty())
-//         {
-//             node_type_name = stmt->type_name;
-//         }
-//         else if (stmt)
-//         {
-//             node_type_name = typeid(*stmt).name(); // RTTI name
-//         }
-//         std::cerr << "  >>> FALLBACK: UNHANDLED_STATEMENT_TYPE: " << node_type_name << std::endl; // DEBUG
-//         return indent("# UNHANDLED_STATEMENT_TYPE: " + node_type_name + "\n", base_indent_level);
-//     }
-
-//     if (statement_code_to_indent.empty())
-//     {
-//         std::cerr << "  No code generated for this leaf statement." << std::endl; // DEBUG
-//         return "";
-//     }
-//     std::cerr << "  Indenting leaf statement code for: "
-//               << (stmt->type_name.empty() ? typeid(*stmt).name() : stmt->type_name)
-//               << std::endl; // DEBUG
-//     return indent(statement_code_to_indent, base_indent_level);
-// }
 // --- MODIFY transpileStatement ---
 string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_indent_level)
 {
@@ -1525,105 +1044,6 @@ string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_i
     }
     return indent(statement_code_to_indent, base_indent_level);
 }
-// string Transpiler::transpileStatement(shared_ptr<StatementNode> stmt, int base_indent_level)
-// {
-//     if (!stmt)
-//     {
-//         return "";
-//     }
-
-//     // ---- SECTION 1: Structural/Block statements that manage their own full indentation ----
-//     // These should typically return the fully transpiled string directly.
-//     if (auto funcDecl = dynamic_pointer_cast<FunctionDeclarationNode>(stmt))
-//     {
-//         return transpileFunctionDeclaration(funcDecl);
-//     }
-//     else if (auto ifStmt = dynamic_pointer_cast<IfNode>(stmt))
-//     {
-//         return transpileIfStatement(ifStmt, base_indent_level);
-//     }
-//     else if (auto forStmt = dynamic_pointer_cast<ForNode>(stmt))
-//     {
-//         return transpileForStatement(forStmt, base_indent_level);
-//     }
-//     else if (auto whileStmt = dynamic_pointer_cast<WhileNode>(stmt))
-//     {
-//         return transpileWhileStatement(whileStmt, base_indent_level);
-//     }
-//     else if (auto blockStmt = dynamic_pointer_cast<BlockNode>(stmt))
-//     {
-//         return transpileBlock(blockStmt, base_indent_level);
-//     }
-
-//     // ---- SECTION 2: Leaf-like statements ----
-//     // These typically generate a single or few lines of code that will then be indented.
-//     string statement_code_to_indent;
-
-//     // IMPORTANT: The following 'if' should be 'else if' to correctly chain from the structural statements above.
-//     // Assuming that was a copy-paste artifact from my debug version and you intended it to be else if.
-//     // If it's a standalone 'if', then statements handled by SECTION 1 would also fall into this 'else' block, which is wrong.
-//     // I'll make it 'else if' as it should be.
-//     if (auto assignStmt = dynamic_pointer_cast<AssignmentStatementNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileAssignmentStatement(assignStmt);
-//     }
-//     else if (auto arrayDecl = dynamic_pointer_cast<ArrayDeclarationNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileArrayDeclaration(arrayDecl);
-//     }
-//     else if (auto varDecl = dynamic_pointer_cast<VariableDeclarationNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileVariableDeclaration(varDecl);
-//     }
-//     else if (auto exprStmt = dynamic_pointer_cast<ExpressionStatementNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileExpressionStatement(exprStmt);
-//     }
-//     else if (auto printfStmt = dynamic_pointer_cast<PrintfNode>(stmt))
-//     { // For printf(...)
-//         statement_code_to_indent = transpilePrintfStatement(printfStmt);
-//     }
-//     else if (auto scanfStmt = dynamic_pointer_cast<ScanfNode>(stmt))
-//     { // For scanf(...)
-//         statement_code_to_indent = transpileScanfStatement(scanfStmt);
-//     }
-//     else if (auto returnStmt = dynamic_pointer_cast<ReturnNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileReturnStatement(returnStmt);
-//     }
-//     else if (auto breakStmt = dynamic_pointer_cast<BreakNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileBreakStatement(breakStmt);
-//     }
-//     else if (auto continueStmt = dynamic_pointer_cast<ContinueNode>(stmt))
-//     {
-//         statement_code_to_indent = transpileContinueStatement(continueStmt);
-//     }
-//     // Final fallback
-//     else
-//     {
-//         string node_type_name = "null_stmt_or_empty_type_name";
-//         if (stmt && !stmt->type_name.empty())
-//         {
-//             node_type_name = stmt->type_name;
-//         }
-//         else if (stmt)
-//         {
-//             node_type_name = typeid(*stmt).name(); // RTTI name
-//         }
-//         // Consider logging this to cerr for permanent, non-debug error visibility if desired
-//         // std::cerr << "Transpiler Fallback: Unhandled Statement Type: " << node_type_name << std::endl;
-//         return indent("# UNHANDLED_STATEMENT_TYPE: " + node_type_name + "\n", base_indent_level);
-//     }
-
-//     // If one of the leaf statement conditions (SECTION 2) was met and populated statement_code_to_indent
-//     if (statement_code_to_indent.empty())
-//     {
-//         return ""; // e.g., from an uninitialized variable declaration that produces no code
-//     }
-//     return indent(statement_code_to_indent, base_indent_level);
-// }
-
 string Transpiler::transpileExpression(shared_ptr<ExpressionNode> expr)
 {
     if (!expr)

@@ -226,18 +226,7 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         printIndent(indent + 1);
         cout << "Index Expression:" << endl;
         printAST(p->getIndexExpression(), indent + 2);
-    }
-    // else if (auto p = dynamic_pointer_cast<VariableDeclarationNode>(node))
-    // {
-    //     printIndent(indent);
-    //     cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << endl;
-    //     if (p->getInitializer())
-    //     {
-    //         printIndent(indent + 1);
-    //         cout << "Initializer:" << endl;
-    //         printAST(p->getInitializer(), indent + 2);
-    //     }
-    // }
+    } 
     else if (auto p = dynamic_pointer_cast<VariableDeclarationNode>(node)) // This should come AFTER ArrayDeclarationNode if ArrayDecl inherits from VarDecl
     {
         printIndent(indent);
@@ -248,41 +237,32 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
             cout << "Initializer:" << endl;
             printAST(p->getInitializer(), indent + 2);
         }
-    }
-    // else if (auto p = dynamic_pointer_cast<FunctionDeclarationNode>(node))
-    // {
-    //     printIndent(indent);
-    //     cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << "(";
-    //     const auto paramNames = p->getParamNames();
-    //     const auto paramTypes = p->getParamTypes();
-    //     for (size_t i = 0; i < paramNames.size(); ++i)
-    //     {
-    //         cout << paramTypes[i] << " " << paramNames[i] << (i < paramNames.size() - 1 ? ", " : "");
-    //     }
-    //     cout << ")" << endl;
-    //     if (p->getBody())
-    //     {
-    //         printIndent(indent + 1);
-    //         cout << "Body:" << endl;
-    //         printAST(p->getBody(), indent + 2);
-    //     }
-    //     else
-    //     {
-    //         printIndent(indent + 1);
-    //         cout << "(Forward Declaration / No Body)" << endl;
-    //     }
-    // }
+    } 
+    // REPLACE the old FunctionDeclarationNode block inside printAST with this one:
     else if (auto p = dynamic_pointer_cast<FunctionDeclarationNode>(node))
     {
         printIndent(indent);
         cout << "(" << p->type_name << "): " << p->getDeclaredType() << " " << p->getName() << "(";
-        const auto paramNames = p->getParamNames();
-        const auto paramTypes = p->getParamTypes();
-        for (size_t i = 0; i < paramNames.size(); ++i)
+
+        // Use the new getParameters() method
+        const auto &params = p->getParameters();
+        for (size_t i = 0; i < params.size(); ++i)
         {
-            cout << paramTypes[i] << " " << paramNames[i] << (i < paramNames.size() - 1 ? ", " : "");
+            // Print type and name
+            cout << params[i].type << " " << params[i].name;
+            // If it's an array, print the brackets!
+            if (params[i].isArray)
+            {
+                cout << "[]";
+            }
+            // Add comma if not the last parameter
+            if (i < params.size() - 1)
+            {
+                cout << ", ";
+            }
         }
         cout << ")" << endl;
+
         if (p->getBody())
         {
             printIndent(indent + 1);
@@ -300,15 +280,7 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         printIndent(indent);
         cout << "(" << p->type_name << ")" << endl;
         printAST(p->getAssignment(), indent + 1);
-    }
-    // else if (auto p = dynamic_pointer_cast<AssignmentNode>(node))
-    // {
-    //     printIndent(indent);
-    //     cout << "(" << p->type_name << "): Target '" << p->getTargetName() << "' =" << endl;
-    //     printIndent(indent + 1);
-    //     cout << "Value:" << endl;
-    //     printAST(p->getValue(), indent + 2);
-    // }
+    } 
     else if (auto p = dynamic_pointer_cast<AssignmentNode>(node))
     {
         printIndent(indent);
@@ -320,18 +292,7 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
         printIndent(indent + 1);
         cout << "RValue (Value):" << endl;
         printAST(p->getRValue(), indent + 2); // Assumes getRValue()
-    }
-    // else if (auto p = dynamic_pointer_cast<BinaryExpressionNode>(node))
-    // {
-    //     printIndent(indent);
-    //     cout << "(" << p->type_name << "): Operator '" << p->getOperator() << "'" << endl;
-    //     printIndent(indent + 1);
-    //     cout << "Left:" << endl;
-    //     printAST(p->getLeft(), indent + 2);
-    //     printIndent(indent + 1);
-    //     cout << "Right:" << endl;
-    //     printAST(p->getRight(), indent + 2);
-    // }
+    } 
     else if (auto p = dynamic_pointer_cast<BinaryExpressionNode>(node))
     {
         printIndent(indent);
@@ -415,46 +376,7 @@ void printAST(const shared_ptr<ASTNode> &node, int indent)
                 cout << "expr"; // Placeholder for complex expression
             }
         }
-    }
-        // else
-        // { // Fallback for unknown node types or types not explicitly handled above
-        //     printIndent(indent);
-        //     cout << "Unknown or unhandled ASTNode type: " << (node->type_name.empty() ? "(no type_name field set)" : node->type_name) << endl;
-
-        //     const auto &genericChildren = node->getChildren();
-        //     if (!genericChildren.empty())
-        //     {
-        //         // The following booleans are used to avoid printing generic children
-        //         // if they are already explicitly printed by specific handlers above.
-        //         // This logic is to satisfy IntelliSense about converting shared_ptr to bool.
-        //         bool isPrintfOrScanf = (dynamic_pointer_cast<PrintfNode>(node) != nullptr) ||
-        //                                (dynamic_pointer_cast<ScanfNode>(node) != nullptr);
-        //         bool isExpressionStmt = (dynamic_pointer_cast<ExpressionStatementNode>(node) != nullptr); // Line 243
-        //         bool isProgramOrBlock = (dynamic_pointer_cast<ProgramNode>(node) != nullptr) ||
-        //                                 (dynamic_pointer_cast<BlockNode>(node) != nullptr);
-        //         bool isReturnNode = (dynamic_pointer_cast<ReturnNode>(node) != nullptr);           // Line 245
-        //         bool isVarDecl = (dynamic_pointer_cast<VariableDeclarationNode>(node) != nullptr); // Line 246
-        //         bool isAssignment = (dynamic_pointer_cast<AssignmentNode>(node) != nullptr);       // Line 247
-        //         bool isBinaryExpr = (dynamic_pointer_cast<BinaryExpressionNode>(node) != nullptr); // Line 248
-        //         bool isUnaryExpr = (dynamic_pointer_cast<UnaryExpressionNode>(node) != nullptr);   // Line 249
-        //         bool isFuncCall = (dynamic_pointer_cast<FunctionCallNode>(node) != nullptr);       // Line 250
-        //         // Add any other node types that manage their primary 'children' through ASTNode::children directly
-        //         // and are also explicitly handled above.
-
-        //         // If the node type isn't one that we *know* prints its children via specific getters...
-        //         if (!isPrintfOrScanf && !isExpressionStmt && !isProgramOrBlock &&
-        //             !isReturnNode && !isVarDecl && !isAssignment &&
-        //             !isBinaryExpr && !isUnaryExpr && !isFuncCall)
-        //         {
-        //             printIndent(indent + 1);
-        //             cout << "Generic Children:" << endl;
-        //             for (const auto &child : genericChildren)
-        //             {
-        //                 printAST(child, indent + 2);
-        //             }
-        //         }
-        //     }
-        // }
+    } 
         else // Fallback for unknown node types or types not explicitly handled above
         {
             printIndent(indent);

@@ -270,26 +270,39 @@ public:
     }
 };
 
+// ADD THIS STRUCT:
+struct Parameter
+{
+    string name;
+    string type;
+    bool isArray = false; // The crucial new piece of information!
+};
+
+// REPLACE the old FunctionDeclarationNode with this one:
 class FunctionDeclarationNode : public DeclarationNode
 {
 public:
     FunctionDeclarationNode(const string &funcName, const string &retType)
         : DeclarationNode(funcName, retType) { type_name = "FunctionDeclarationNode"; }
-    void addParameter(const string &paramName, const string &paramType)
+
+    // The method to add parameters now takes the new struct
+    void addParameter(const Parameter &param)
     {
-        paramNames.push_back(paramName);
-        paramTypes.push_back(paramType);
+        parameters.push_back(param);
     }
+
     void setBody(shared_ptr<BlockNode> funcBody) { body = funcBody; }
 
-    const vector<string> &getParamNames() const { return paramNames; }
-    const vector<string> &getParamTypes() const { return paramTypes; }
+    // Getters now return the new struct
+    const vector<Parameter> &getParameters() const { return parameters; }
     shared_ptr<BlockNode> getBody() const { return body; }
 
 private:
-    vector<string> paramNames;
-    vector<string> paramTypes;
+    // This is the main change: one vector of a rich struct
+    vector<Parameter> parameters;
     shared_ptr<BlockNode> body;
+
+    // The old paramNames and paramTypes vectors are gone.
 };
 
 class BinaryExpressionNode : public ExpressionNode
@@ -340,24 +353,6 @@ private:
     string name;
 };
 
-// class AssignmentNode : public ExpressionNode
-// {
-// public:
-//     AssignmentNode(const string &targetIdentifierName) : target_name(targetIdentifierName)
-//     {
-//         type_name = "AssignmentNode";
-//     }
-//     const string &getTargetName() const { return target_name; }
-//     shared_ptr<ExpressionNode> getValue() const
-//     {
-//         if (!children.empty())
-//             return dynamic_pointer_cast<ExpressionNode>(children[0]);
-//         return nullptr;
-//     }
-
-// private:
-//     string target_name;
-// };
 class AssignmentNode : public ExpressionNode
 {
 public:

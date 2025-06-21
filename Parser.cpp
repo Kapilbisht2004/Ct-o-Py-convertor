@@ -118,51 +118,7 @@ shared_ptr<ProgramNode> Parser::parseProgram()
     }
     return programNode;
 }
-
-// shared_ptr<StatementNode> Parser::parseStatement()
-// {
-//     if (match(TokenType::Keyword, "if"))
-//         return parseIf();
-//     if (match(TokenType::Keyword, "while"))
-//         return parseWhile();
-//     if (match(TokenType::Keyword, "for"))
-//         return parseFor();
-//     if (match(TokenType::Keyword, "return"))
-//         return parseReturn();
-//     if (match(TokenType::Keyword, "break"))
-//         return parseBreak();
-//     if (match(TokenType::Keyword, "continue"))
-//         return parseContinue();
-//     if (match(TokenType::Symbol, "{"))
-//         return parseBlock();
-
-//     // Handle printf and scanf (assuming they are lexed as Identifiers)
-//     if (check(TokenType::Identifier, "printf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
-//     {
-//         return parsePrintfStatement();
-//     }
-//     if (check(TokenType::Identifier, "scanf") && peek(1).type == TokenType::Symbol && peek(1).value == "(")
-//     {
-//         return parseScanfStatement();
-//     }
-
-//     // Check for type keywords for declarations
-//     // Ensure "char" and "bool" are included.
-//     if (check(TokenType::Keyword, "int") || check(TokenType::Keyword, "float") ||
-//         check(TokenType::Keyword, "char") || check(TokenType::Keyword, "bool") ||
-//         check(TokenType::Keyword, "string") || check(TokenType::Keyword, "void"))
-//     {
-//         return parseDeclaration();
-//     }
-
-//     // Check for assignment statement
-//     if (check(TokenType::Identifier) && peek(1).type == TokenType::Operator && peek(1).value == "=")
-//     {
-//         return parseAssignmentStatement();
-//     }
-
-//     return parseExpressionStatement();
-// }
+ 
 shared_ptr<StatementNode> Parser::parseStatement()
 {
     if (match(TokenType::Keyword, "if"))
@@ -195,14 +151,7 @@ shared_ptr<StatementNode> Parser::parseStatement()
     {
         return parseDeclaration();
     }
-
-    // --- REMOVE this specific check for assignment statements ---
-    // Assignments (like arr[i] = val; or x = val;) will now be parsed as
-    // ExpressionStatements containing an AssignmentNode (which is an ExpressionNode).
-    // The old check was:
-    // if (check(TokenType::Identifier) && peek(1).type == TokenType::Operator && peek(1).value == "=") {
-    //     return parseAssignmentStatement(); // This function will be removed
-    // }
+ 
 
     // This call will now handle expression statements, including those that are assignments.
     return parseExpressionStatement();
@@ -480,7 +429,9 @@ shared_ptr<VariableDeclarationNode> Parser::parseVariableDeclaration(
     consume(TokenType::Symbol, ";", "Expected ';' after variable declaration.");
     return varDeclNode;
 }
+ 
 
+// REPLACE the old parseFunctionDeclaration with this one:
 shared_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration(
     const string &returnType, const string &identifier)
 {
@@ -491,15 +442,31 @@ shared_ptr<FunctionDeclarationNode> Parser::parseFunctionDeclaration(
     {
         do
         {
+            // This is the new logic:
+            Parameter currentParam; // Create a new Parameter object
+
+            // 1. Parse type
             if (!(check(TokenType::Keyword, "int") || check(TokenType::Keyword, "float") ||
                   check(TokenType::Keyword, "char") || check(TokenType::Keyword, "bool") ||
                   check(TokenType::Keyword, "string") || check(TokenType::Keyword, "void")))
             {
                 throw runtime_error("Expected type keyword for function parameter, got " + peek().toString());
             }
-            string paramType = advance().value;
-            string paramName = consume(TokenType::Identifier, "Expected parameter name.").value;
-            funcDeclNode->addParameter(paramName, paramType);
+            currentParam.type = advance().value;
+
+            // 2. Parse name
+            currentParam.name = consume(TokenType::Identifier, "Expected parameter name.").value;
+
+            // 3. NEW: Check for array syntax `[]`
+            if (match(TokenType::Symbol, "["))
+            {
+                consume(TokenType::Symbol, "]", "Expected ']' after '[' in array parameter declaration.");
+                currentParam.isArray = true; // Mark it as an array!
+            }
+
+            // 4. Add the completed parameter to the node
+            funcDeclNode->addParameter(currentParam);
+
         } while (match(TokenType::Symbol, ","));
     }
     consume(TokenType::Symbol, ")", "Expected ')' after parameters or empty parameter list.");
@@ -520,27 +487,7 @@ shared_ptr<ExpressionNode> Parser::parseExpression()
 {
     return parseAssignmentExpression();
 }
-
-// shared_ptr<ExpressionNode> Parser::parseAssignmentExpression()
-// {
-//     auto left = parseLogicalOr();
-//     if (match(TokenType::Operator, "="))
-//     {
-//         Token assignOp = previous();
-//         auto value = parseAssignmentExpression();
-
-//         if (auto identNode = dynamic_pointer_cast<IdentifierNode>(left))
-//         {
-//             auto assignNode = make_shared<AssignmentNode>(identNode->getName());
-//             assignNode->addChild(value);
-//             return assignNode;
-//         }
-//         // TODO: Handle other L-values like array access obj.member = value
-//         throw runtime_error("Invalid assignment target. Expected identifier, got " + left->type_name +
-//                             " (token: " + assignOp.toString() + ")");
-//     }
-//     return left;
-// }
+ 
 shared_ptr<ExpressionNode> Parser::parseAssignmentExpression()
 {
     auto left_expr = parseLogicalOr(); // This can parse identifiers, array_subscripts, etc.
@@ -626,47 +573,7 @@ shared_ptr<ExpressionNode> Parser::parseUnary()
     }
     return parseCall();
 }
-
-// shared_ptr<ExpressionNode> Parser::parseCall()
-// {
-//     auto expr = parsePrimary();
-//     while (true)
-//     {
-//         if (match(TokenType::Symbol, "("))
-//         {
-//             // Check if 'expr' is an IdentifierNode before treating as simple function call
-//             // For more advanced scenarios (e.g. (get_func())(arg) ), 'expr' could be other ExpressionNode types.
-//             if (auto identNode = dynamic_pointer_cast<IdentifierNode>(expr))
-//             {
-//                 auto callNode = make_shared<FunctionCallNode>(identNode->getName());
-//                 if (!check(TokenType::Symbol, ")"))
-//                 {
-//                     do
-//                     {
-//                         callNode->addChild(parseExpression());
-//                     } while (match(TokenType::Symbol, ","));
-//                 }
-//                 consume(TokenType::Symbol, ")", "Expected ')' after function call arguments.");
-//                 expr = callNode;
-//             }
-//             else
-//             {
-//                 // If 'expr' is not a simple identifier, it might be an expression that evaluates to a function.
-//                 // For now, strict: must be identifier before '('.
-//                 // A more general FunctionCallNode might store an ExpressionNode 'callee' instead of 'string name'.
-//                 throw runtime_error("Expression before '(' is not a simple callable identifier for function call.");
-//             }
-//         }
-//         // TODO: Add other postfix operators like array subscript [] or member access .
-//         // else if (match(TokenType::Symbol, "[")) { ... expr = ...; continue; }
-//         // else if (match(TokenType::Operator, ".")) { ... expr = ...; continue; }
-//         else
-//         {
-//             break;
-//         }
-//     }
-//     return expr;
-// }
+ 
 shared_ptr<ExpressionNode> Parser::parseCall()
 {
     auto expr = parsePrimary(); // Parses identifier, literal, (grouped_expr), etc.
